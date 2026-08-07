@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useApp } from '../store/AppContext';
+import { Currency } from '../types';
 import { Field, FormInput, parseAmount, SaveButton } from './form';
+import { SegmentedControl } from './SegmentedControl';
 import { Sheet } from './Sheet';
+
+// Cada monto lleva su propia moneda: valor en USD con alquiler en ARS es el
+// caso típico.
 
 interface Props {
   visible: boolean;
@@ -12,8 +18,11 @@ export function NewPropertyModal({ visible, onClose }: Props) {
   const { addProperty } = useApp();
   const [name, setName] = useState('');
   const [rent, setRent] = useState('');
+  const [rentCurrency, setRentCurrency] = useState<Currency>('ARS');
   const [expenses, setExpenses] = useState('');
+  const [expensesCurrency, setExpensesCurrency] = useState<Currency>('ARS');
   const [value, setValue] = useState('');
+  const [valueCurrency, setValueCurrency] = useState<Currency>('USD');
 
   const parsedRent = parseAmount(rent);
   const parsedExpenses = expenses.trim() === '' ? 0 : parseAmount(expenses);
@@ -24,8 +33,11 @@ export function NewPropertyModal({ visible, onClose }: Props) {
   const reset = () => {
     setName('');
     setRent('');
+    setRentCurrency('ARS');
     setExpenses('');
+    setExpensesCurrency('ARS');
     setValue('');
+    setValueCurrency('USD');
   };
 
   const handleSave = async () => {
@@ -33,8 +45,11 @@ export function NewPropertyModal({ visible, onClose }: Props) {
     await addProperty({
       name: name.trim(),
       monthlyRent: parsedRent,
+      rentCurrency,
       monthlyExpenses: parsedExpenses,
+      expensesCurrency,
       estimatedValue: parsedValue,
+      valueCurrency,
     });
     reset();
     onClose();
@@ -46,37 +61,84 @@ export function NewPropertyModal({ visible, onClose }: Props) {
         <FormInput value={name} onChangeText={setName} placeholder="Ej: Depto 2 amb · Palermo" />
       </Field>
 
-      <Field label="Alquiler mensual (USD)">
-        <FormInput
-          value={rent}
-          onChangeText={setRent}
-          placeholder="0"
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-        />
-      </Field>
+      <AmountField
+        label="Alquiler mensual"
+        amount={rent}
+        onAmount={setRent}
+        currency={rentCurrency}
+        onCurrency={setRentCurrency}
+      />
 
-      <Field label="Gastos mensuales (USD)">
-        <FormInput
-          value={expenses}
-          onChangeText={setExpenses}
-          placeholder="0"
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-        />
-      </Field>
+      <AmountField
+        label="Gastos mensuales"
+        amount={expenses}
+        onAmount={setExpenses}
+        currency={expensesCurrency}
+        onCurrency={setExpensesCurrency}
+      />
 
-      <Field label="Valor estimado (USD)">
-        <FormInput
-          value={value}
-          onChangeText={setValue}
-          placeholder="0"
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-        />
-      </Field>
+      <AmountField
+        label="Valor estimado"
+        amount={value}
+        onAmount={setValue}
+        currency={valueCurrency}
+        onCurrency={setValueCurrency}
+      />
 
       <SaveButton label="Agregar" disabled={!valid} onPress={handleSave} />
     </Sheet>
   );
 }
+
+function AmountField({
+  label,
+  amount,
+  onAmount,
+  currency,
+  onCurrency,
+}: {
+  label: string;
+  amount: string;
+  onAmount: (value: string) => void;
+  currency: Currency;
+  onCurrency: (value: Currency) => void;
+}) {
+  return (
+    <Field label={label}>
+      <View style={styles.row}>
+        <FormInput
+          style={styles.input}
+          value={amount}
+          onChangeText={onAmount}
+          placeholder="0"
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+        />
+        <View style={styles.toggle}>
+          <SegmentedControl
+            options={[
+              { value: 'ARS', label: 'ARS' },
+              { value: 'USD', label: 'USD' },
+            ]}
+            value={currency}
+            onChange={onCurrency}
+          />
+        </View>
+      </View>
+    </Field>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+  },
+  toggle: {
+    width: 136,
+  },
+});

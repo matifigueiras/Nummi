@@ -53,20 +53,40 @@ export const mockMovements: Movement[] = [
   { id: 'm35', date: '2026-08-05', description: 'Proyecto freelance', category: 'Freelance', type: 'ingreso', currency: 'USD', amount: 550 },
   { id: 'm36', date: '2026-08-05', description: 'Carga SUBE', category: 'Transporte', type: 'gasto', currency: 'ARS', amount: 20000 },
   { id: 'm37', date: '2026-08-06', description: 'Café de especialidad', category: 'Salidas', type: 'gasto', currency: 'ARS', amount: 9500 },
+  { id: 'm38', date: '2026-08-03', description: 'Suscripciones (Spotify, Netflix)', category: 'Servicios', type: 'gasto', currency: 'USD', amount: 22 },
 ];
 
 export const mockPositions: Position[] = [
-  { id: 'p1', kind: 'accion', ticker: 'AAPL', name: 'Apple', quantity: 10, buyPrice: 192, currentPrice: 238 },
-  { id: 'p2', kind: 'accion', ticker: 'NVDA', name: 'NVIDIA', quantity: 6, buyPrice: 98, currentPrice: 182 },
-  { id: 'p3', kind: 'accion', ticker: 'SPY', name: 'S&P 500 ETF', quantity: 4, buyPrice: 505, currentPrice: 574 },
-  { id: 'p4', kind: 'accion', ticker: 'KO', name: 'Coca-Cola', quantity: 20, buyPrice: 61, currentPrice: 66 },
-  { id: 'p5', kind: 'cripto', ticker: 'BTC', name: 'Bitcoin', quantity: 0.048, buyPrice: 52000, currentPrice: 108500 },
-  { id: 'p6', kind: 'cripto', ticker: 'ETH', name: 'Ethereum', quantity: 0.85, buyPrice: 2450, currentPrice: 3920 },
+  { id: 'p1', kind: 'accion', ticker: 'AAPL', name: 'Apple', quantity: 10, currency: 'USD', buyPrice: 192, currentPrice: 238 },
+  { id: 'p2', kind: 'accion', ticker: 'NVDA', name: 'NVIDIA', quantity: 6, currency: 'USD', buyPrice: 98, currentPrice: 182 },
+  { id: 'p3', kind: 'accion', ticker: 'SPY', name: 'S&P 500 ETF', quantity: 4, currency: 'USD', buyPrice: 505, currentPrice: 574 },
+  { id: 'p4', kind: 'accion', ticker: 'GGAL', name: 'Grupo Galicia', quantity: 100, currency: 'ARS', buyPrice: 4500, currentPrice: 7200 },
+  { id: 'p5', kind: 'cripto', ticker: 'BTC', name: 'Bitcoin', quantity: 0.048, currency: 'USD', buyPrice: 52000, currentPrice: 108500 },
+  { id: 'p6', kind: 'cripto', ticker: 'ETH', name: 'Ethereum', quantity: 0.85, currency: 'USD', buyPrice: 2450, currentPrice: 3920 },
 ];
 
 export const mockProperties: Property[] = [
-  { id: 'r1', name: 'Depto 2 amb · Palermo', monthlyRent: 640, monthlyExpenses: 130, estimatedValue: 128000 },
-  { id: 'r2', name: 'Cochera · Belgrano', monthlyRent: 95, monthlyExpenses: 18, estimatedValue: 19500 },
+  // Caso típico argentino: valor en USD, alquiler y gastos en ARS
+  {
+    id: 'r1',
+    name: 'Depto 2 amb · Palermo',
+    monthlyRent: 950000,
+    rentCurrency: 'ARS',
+    monthlyExpenses: 190000,
+    expensesCurrency: 'ARS',
+    estimatedValue: 128000,
+    valueCurrency: 'USD',
+  },
+  {
+    id: 'r2',
+    name: 'Cochera · Belgrano',
+    monthlyRent: 95,
+    rentCurrency: 'USD',
+    monthlyExpenses: 18,
+    expensesCurrency: 'USD',
+    estimatedValue: 19500,
+    valueCurrency: 'USD',
+  },
 ];
 
 export const mockSavingsGoal: SavingsGoal = { currency: 'ARS', amount: 900000 };

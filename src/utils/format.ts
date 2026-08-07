@@ -57,6 +57,11 @@ export function monthKeyOf(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Convierte un monto a USD usando el blue (venta) como referencia */
+export function toUsd(amount: number, currency: Currency, ventaRate: number): number {
+  return currency === 'USD' ? amount : amount / ventaRate;
+}
+
 export function todayISO(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(

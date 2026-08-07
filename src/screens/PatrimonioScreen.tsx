@@ -9,7 +9,7 @@ import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Position, PositionKind, Property } from '../types';
-import { formatMoney, formatPercent } from '../utils/format';
+import { formatMoney, formatPercent, toUsd } from '../utils/format';
 
 export function PatrimonioScreen() {
   const { accounts, movements, positions, properties, dolar } = useApp();
@@ -31,13 +31,21 @@ export function PatrimonioScreen() {
   }, [accounts, movements, dolar.rate.venta]);
 
   const investmentsUsd = useMemo(
-    () => positions.reduce((sum, p) => sum + p.quantity * p.currentPrice, 0),
-    [positions],
+    () =>
+      positions.reduce(
+        (sum, p) => sum + toUsd(p.quantity * p.currentPrice, p.currency, dolar.rate.venta),
+        0,
+      ),
+    [positions, dolar.rate.venta],
   );
 
   const propertiesUsd = useMemo(
-    () => properties.reduce((sum, p) => sum + p.estimatedValue, 0),
-    [properties],
+    () =>
+      properties.reduce(
+        (sum, p) => sum + toUsd(p.estimatedValue, p.valueCurrency, dolar.rate.venta),
+        0,
+      ),
+    [properties, dolar.rate.venta],
   );
 
   const totalUsd = cashUsd + investmentsUsd + propertiesUsd;
@@ -147,12 +155,12 @@ function PositionRow({ position }: { position: Position }) {
       <View style={styles.rowInfo}>
         <Text style={styles.rowTitle}>{position.name}</Text>
         <Text style={styles.rowMeta}>
-          {position.quantity} × {formatMoney(position.currentPrice, 'USD')} · compra{' '}
-          {formatMoney(position.buyPrice, 'USD')}
+          {position.quantity} × {formatMoney(position.currentPrice, position.currency)} · compra{' '}
+          {formatMoney(position.buyPrice, position.currency)}
         </Text>
       </View>
       <View style={styles.rowRight}>
-        <Text style={styles.rowValue}>{formatMoney(value, 'USD')}</Text>
+        <Text style={styles.rowValue}>{formatMoney(value, position.currency)}</Text>
         <View
           style={[styles.pnlChip, { backgroundColor: gain ? colors.incomeSoft : colors.expenseSoft }]}
         >
@@ -172,9 +180,14 @@ function PositionRow({ position }: { position: Position }) {
 
 function PropertyRow({ property }: { property: Property }) {
   const { colors } = useTheme();
+  const { dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
-  const netMonthly = property.monthlyRent - property.monthlyExpenses;
-  const yieldPct = (netMonthly * 12 * 100) / property.estimatedValue;
+  // Todo a USD para que el yield tenga sentido aunque las monedas estén mezcladas
+  const netMonthlyUsd =
+    toUsd(property.monthlyRent, property.rentCurrency, dolar.rate.venta) -
+    toUsd(property.monthlyExpenses, property.expensesCurrency, dolar.rate.venta);
+  const valueUsd = toUsd(property.estimatedValue, property.valueCurrency, dolar.rate.venta);
+  const yieldPct = (netMonthlyUsd * 12 * 100) / valueUsd;
   return (
     <View style={styles.row}>
       <View style={[styles.tickerBadge, { backgroundColor: colors.accentSoft }]}>
@@ -183,12 +196,14 @@ function PropertyRow({ property }: { property: Property }) {
       <View style={styles.rowInfo}>
         <Text style={styles.rowTitle}>{property.name}</Text>
         <Text style={styles.rowMeta}>
-          Alquiler {formatMoney(property.monthlyRent, 'USD')} · Gastos{' '}
-          {formatMoney(property.monthlyExpenses, 'USD')}
+          Alquiler {formatMoney(property.monthlyRent, property.rentCurrency)} · Gastos{' '}
+          {formatMoney(property.monthlyExpenses, property.expensesCurrency)}
         </Text>
       </View>
       <View style={styles.rowRight}>
-        <Text style={styles.rowValue}>{formatMoney(property.estimatedValue, 'USD')}</Text>
+        <Text style={styles.rowValue}>
+          {formatMoney(property.estimatedValue, property.valueCurrency)}
+        </Text>
         <View style={[styles.pnlChip, { backgroundColor: colors.accentSoft }]}>
           <Text style={[styles.pnlText, { color: colors.incomeText }]}>
             {formatPercent(yieldPct)} anual

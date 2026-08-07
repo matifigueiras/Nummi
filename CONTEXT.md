@@ -42,11 +42,12 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 ### Cuentas
 - Caja ARS y Caja USD fusionadas en un solo tab
 - Toggle ARS/USD
+- Widgets del mes en curso: resumen Ingresos/Gastos/Balance y gastos por categoría (barras)
 
 ### Patrimonio
 - Tracking de posiciones individuales:
-  - Acciones y Cripto: ticker, cantidad, precio de compra, precio actual
-  - Propiedades: alquiler mensual, gastos, valor estimado, yield anual calculado automáticamente
+  - Acciones y Cripto: ticker, cantidad, precio de compra, precio actual, **moneda de los precios** (CEDEARs/acciones locales cotizan en ARS)
+  - Propiedades: alquiler mensual, gastos, valor estimado — **cada monto con su propia moneda** (caso típico: valor en USD, alquiler en ARS), yield anual calculado automáticamente convirtiendo todo a USD al blue
 
 ### Más
 - (a definir en próximas iteraciones)
@@ -65,4 +66,4 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Tema claro/oscuro/sistema: selector en "Más", paletas en `src/theme.ts`, contexto en `src/store/ThemeContext.tsx` (la elección vive en memoria hasta que exista almacenamiento)
 - Alta de patrimonio: botón "+" por sección en Patrimonio (acciones, cripto y propiedades) con formularios en sheet
 - Toda la app habla con la interfaz `DataRepository` (`src/data/repository.ts`) — para conectar una API/base de datos real alcanza con escribir otra implementación y cambiar un export
-- Almacenamiento persistente: pendiente, etapa aparte
+- Almacenamiento persistente: pendiente, etapa aparte. **Google Sheets queda descartado explícitamente como backend** — la persistencia futura será una API/base de datos propia detrás de `DataRepository`

@@ -29,21 +29,28 @@ export interface Position {
   ticker: string;
   name: string;
   quantity: number;
-  /** Precio de compra unitario, en USD */
+  /** Moneda en la que cotizan los precios (ej: CEDEARs y acciones locales en ARS) */
+  currency: Currency;
+  /** Precio de compra unitario */
   buyPrice: number;
-  /** Precio actual unitario, en USD */
+  /** Precio actual unitario */
   currentPrice: number;
 }
 
+// Cada monto de una propiedad tiene su propia moneda: es común que el valor
+// esté en USD pero el alquiler y los gastos se cobren/paguen en ARS.
 export interface Property {
   id: string;
   name: string;
-  /** Alquiler mensual, en USD */
+  /** Alquiler mensual */
   monthlyRent: number;
-  /** Gastos mensuales (expensas, impuestos), en USD */
+  rentCurrency: Currency;
+  /** Gastos mensuales (expensas, impuestos) */
   monthlyExpenses: number;
-  /** Valor estimado de la propiedad, en USD */
+  expensesCurrency: Currency;
+  /** Valor estimado de la propiedad */
   estimatedValue: number;
+  valueCurrency: Currency;
 }
 
 export interface SavingsGoal {

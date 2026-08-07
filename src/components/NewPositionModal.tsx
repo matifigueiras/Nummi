@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
-import { PositionKind } from '../types';
+import { Currency, PositionKind } from '../types';
 import { Field, FormInput, parseAmount, SaveButton } from './form';
+import { SegmentedControl } from './SegmentedControl';
 import { Sheet } from './Sheet';
 
 interface Props {
@@ -14,6 +15,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
   const { addPosition } = useApp();
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
+  const [currency, setCurrency] = useState<Currency>('USD');
   const [quantity, setQuantity] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
   const [currentPrice, setCurrentPrice] = useState('');
@@ -27,6 +29,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
   const reset = () => {
     setTicker('');
     setName('');
+    setCurrency('USD');
     setQuantity('');
     setBuyPrice('');
     setCurrentPrice('');
@@ -38,6 +41,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
       kind,
       ticker: ticker.trim().toUpperCase(),
       name: name.trim() || ticker.trim().toUpperCase(),
+      currency,
       quantity: parsedQuantity,
       buyPrice: parsedBuyPrice,
       currentPrice: parsedCurrentPrice,
@@ -69,6 +73,17 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
         />
       </Field>
 
+      <Field label="Moneda de los precios">
+        <SegmentedControl
+          options={[
+            { value: 'USD', label: 'USD' },
+            { value: 'ARS', label: 'ARS' },
+          ]}
+          value={currency}
+          onChange={setCurrency}
+        />
+      </Field>
+
       <Field label="Cantidad">
         <FormInput
           value={quantity}
@@ -79,7 +94,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
         />
       </Field>
 
-      <Field label="Precio de compra (USD)">
+      <Field label={`Precio de compra (${currency})`}>
         <FormInput
           value={buyPrice}
           onChangeText={setBuyPrice}
@@ -89,7 +104,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
         />
       </Field>
 
-      <Field label="Precio actual (USD)">
+      <Field label={`Precio actual (${currency})`}>
         <FormInput
           value={currentPrice}
           onChangeText={setCurrentPrice}
