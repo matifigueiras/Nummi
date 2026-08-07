@@ -1,7 +1,8 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
+import { SavingsGoalModal } from '../components/SavingsGoalModal';
 import { Screen } from '../components/Screen';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { ThemeMode, useTheme, useThemedStyles } from '../store/ThemeContext';
@@ -9,16 +10,16 @@ import { font, radius, spacing, ThemeColors } from '../theme';
 
 // El resto del contenido de "Más" se define en próximas iteraciones.
 
-const ITEMS: { icon: keyof typeof Feather.glyphMap; label: string }[] = [
+const PENDING_ITEMS: { icon: keyof typeof Feather.glyphMap; label: string }[] = [
   { icon: 'tag', label: 'Categorías' },
-  { icon: 'target', label: 'Metas de ahorro' },
   { icon: 'download', label: 'Exportar datos' },
   { icon: 'database', label: 'Conectar almacenamiento' },
 ];
 
 export function MasScreen() {
-  const { mode, setMode } = useTheme();
+  const { mode, setMode, colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   return (
     <Screen>
@@ -48,8 +49,15 @@ export function MasScreen() {
       </Card>
 
       <Card style={styles.listCard}>
-        {ITEMS.map((item, index) => (
-          <View key={item.label} style={[styles.item, index > 0 && styles.itemBorder]}>
+        <Pressable style={styles.item} onPress={() => setShowGoalModal(true)}>
+          <View style={styles.itemIcon}>
+            <ItemIcon icon="target" />
+          </View>
+          <Text style={styles.itemLabel}>Meta de ahorro</Text>
+          <Feather name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
+        {PENDING_ITEMS.map((item) => (
+          <View key={item.label} style={[styles.item, styles.itemBorder]}>
             <View style={styles.itemIcon}>
               <ItemIcon icon={item.icon} />
             </View>
@@ -62,6 +70,8 @@ export function MasScreen() {
       </Card>
 
       <Text style={styles.footer}>Nummi v0.1 · Datos simulados</Text>
+
+      <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />
     </Screen>
   );
 }

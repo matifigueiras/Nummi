@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useThemedStyles } from '../store/ThemeContext';
 import { font, radius, shadow, spacing, ThemeColors } from '../theme';
@@ -11,13 +11,14 @@ interface Props {
   label: string;
   value: string;
   sub?: string;
+  onPress?: () => void;
   children?: React.ReactNode;
 }
 
-export function StatTile({ icon, iconColor, iconBg, label, value, sub, children }: Props) {
+export function StatTile({ icon, iconColor, iconBg, label, value, sub, onPress, children }: Props) {
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.tile}>
+    <Pressable style={styles.tile} onPress={onPress} disabled={!onPress}>
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
         <Feather name={icon} size={15} color={iconColor} />
       </View>
@@ -27,7 +28,7 @@ export function StatTile({ icon, iconColor, iconBg, label, value, sub, children 
       </Text>
       {sub ? <Text style={styles.sub}>{sub}</Text> : null}
       {children}
-    </View>
+    </Pressable>
   );
 }
 

@@ -12,6 +12,13 @@ export interface Movement {
   currency: Currency;
   /** Siempre positivo; el signo lo da `type` */
   amount: number;
+  /**
+   * Si está presente, este movimiento es una pata de una transferencia entre
+   * cajas (ej: compra de USD = gasto ARS + ingreso USD con el mismo id).
+   * Las transferencias cuentan para los saldos pero NO para las estadísticas
+   * de ingresos/gastos del mes.
+   */
+  transferId?: string;
 }
 
 export interface Account {

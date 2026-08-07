@@ -63,8 +63,33 @@ export function toUsd(amount: number, currency: Currency, ventaRate: number): nu
 }
 
 export function todayISO(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate(),
+  return dateToISO(new Date());
+}
+
+export function dateToISO(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
   ).padStart(2, '0')}`;
+}
+
+/** Suma (o resta) días a una fecha ISO yyyy-mm-dd */
+export function addDaysISO(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return dateToISO(new Date(y, m - 1, d + days));
+}
+
+/** "Hoy" / "Ayer" / "5 ago" según la distancia con hoy */
+export function formatDayLabel(isoDate: string): string {
+  if (isoDate === todayISO()) return 'Hoy';
+  if (isoDate === addDaysISO(todayISO(), -1)) return 'Ayer';
+  return formatShortDate(isoDate);
+}
+
+/** "recién" / "hace 5 min" / "hace 2 h" / "hace 3 días" */
+export function formatRelativeTime(date: Date): string {
+  const seconds = Math.max(0, (Date.now() - date.getTime()) / 1000);
+  if (seconds < 90) return 'recién';
+  if (seconds < 3600) return `hace ${Math.round(seconds / 60)} min`;
+  if (seconds < 86400) return `hace ${Math.round(seconds / 3600)} h`;
+  return `hace ${Math.round(seconds / 86400)} días`;
 }

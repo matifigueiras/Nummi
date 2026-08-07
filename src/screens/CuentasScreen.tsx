@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
 import { MovementRow } from '../components/MovementRow';
+import { NewMovementModal } from '../components/NewMovementModal';
 import { Screen } from '../components/Screen';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { useApp } from '../store/AppContext';
@@ -17,6 +18,7 @@ export function CuentasScreen() {
   const { accounts, movements, dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [currency, setCurrency] = useState<Currency>('ARS');
+  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
 
   const account = accounts.find((a) => a.currency === currency);
 
@@ -49,18 +51,19 @@ export function CuentasScreen() {
     [accountMovements, currentKey],
   );
 
+  // Las transferencias entre cajas no cuentan como ingresos/gastos del mes
   const monthIncome = thisMonth
-    .filter((m) => m.type === 'ingreso')
+    .filter((m) => m.type === 'ingreso' && !m.transferId)
     .reduce((sum, m) => sum + m.amount, 0);
   const monthExpense = thisMonth
-    .filter((m) => m.type === 'gasto')
+    .filter((m) => m.type === 'gasto' && !m.transferId)
     .reduce((sum, m) => sum + m.amount, 0);
 
   // Gastos del mes agrupados por categoría, de mayor a menor
   const categories = useMemo(() => {
     const byCategory = new Map<string, number>();
     for (const m of thisMonth) {
-      if (m.type !== 'gasto') continue;
+      if (m.type !== 'gasto' || m.transferId) continue;
       byCategory.set(m.category, (byCategory.get(m.category) ?? 0) + m.amount);
     }
     const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
@@ -158,12 +161,18 @@ export function CuentasScreen() {
             <View key={group.key}>
               <Text style={styles.monthHeader}>{group.title}</Text>
               {group.items.map((mov) => (
-                <MovementRow key={mov.id} movement={mov} />
+                <MovementRow key={mov.id} movement={mov} onPress={setEditingMovement} />
               ))}
             </View>
           ))
         )}
       </Card>
+
+      <NewMovementModal
+        visible={editingMovement !== null}
+        onClose={() => setEditingMovement(null)}
+        movement={editingMovement}
+      />
     </Screen>
   );
 }

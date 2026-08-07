@@ -1,24 +1,37 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Movement } from '../types';
 import { formatShortDate, formatSigned } from '../utils/format';
 
-export function MovementRow({ movement }: { movement: Movement }) {
+export function MovementRow({
+  movement,
+  onPress,
+}: {
+  movement: Movement;
+  onPress?: (movement: Movement) => void;
+}) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const isTransfer = Boolean(movement.transferId);
   const isIncome = movement.type === 'ingreso';
   const signed = isIncome ? movement.amount : -movement.amount;
+
+  const iconBg = isTransfer ? colors.inkSoft : isIncome ? colors.incomeSoft : colors.expenseSoft;
+  const iconColor = isTransfer
+    ? colors.secondary
+    : isIncome
+      ? colors.incomeText
+      : colors.expenseText;
+  const icon = isTransfer ? 'repeat' : isIncome ? 'arrow-down-left' : 'arrow-up-right';
+  const amountColor = isTransfer ? colors.secondary : isIncome ? colors.incomeText : colors.ink;
+
   return (
-    <View style={styles.row}>
-      <View style={[styles.iconWrap, { backgroundColor: isIncome ? colors.incomeSoft : colors.expenseSoft }]}>
-        <Feather
-          name={isIncome ? 'arrow-down-left' : 'arrow-up-right'}
-          size={16}
-          color={isIncome ? colors.incomeText : colors.expenseText}
-        />
+    <Pressable style={styles.row} onPress={onPress ? () => onPress(movement) : undefined}>
+      <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
+        <Feather name={icon} size={16} color={iconColor} />
       </View>
       <View style={styles.info}>
         <Text style={styles.description} numberOfLines={1}>
@@ -28,10 +41,10 @@ export function MovementRow({ movement }: { movement: Movement }) {
           {movement.category} · {formatShortDate(movement.date)}
         </Text>
       </View>
-      <Text style={[styles.amount, { color: isIncome ? colors.incomeText : colors.ink }]}>
+      <Text style={[styles.amount, { color: amountColor }]}>
         {formatSigned(signed, movement.currency)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

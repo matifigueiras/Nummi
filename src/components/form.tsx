@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
+import { addDaysISO, formatDayLabel, todayISO } from '../utils/format';
 
 // Piezas compartidas por los formularios de los sheets (movimiento, posición,
 // propiedad): campo con etiqueta, inputs, chips y botón de guardar.
@@ -82,6 +84,60 @@ export function SaveButton({
   );
 }
 
+/** Selector de día con flechas: Hoy / Ayer / fechas anteriores. No permite futuro. */
+export function DayStepper({ date, onChange }: { date: string; onChange: (iso: string) => void }) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const atToday = date >= todayISO();
+  return (
+    <View style={styles.dayRow}>
+      <Pressable style={styles.dayButton} onPress={() => onChange(addDaysISO(date, -1))} hitSlop={6}>
+        <Feather name="chevron-left" size={18} color={colors.ink} />
+      </Pressable>
+      <Text style={styles.dayLabel}>{formatDayLabel(date)}</Text>
+      <Pressable
+        style={[styles.dayButton, atToday && styles.dayButtonDisabled]}
+        onPress={() => onChange(addDaysISO(date, 1))}
+        disabled={atToday}
+        hitSlop={6}
+      >
+        <Feather name="chevron-right" size={18} color={atToday ? colors.muted : colors.ink} />
+      </Pressable>
+    </View>
+  );
+}
+
+/** Botón de borrado en dos pasos: el primer tap arma, el segundo confirma. */
+export function ConfirmDeleteButton({ label, onDelete }: { label: string; onDelete: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  const [armed, setArmed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const handlePress = () => {
+    if (armed) {
+      onDelete();
+      setArmed(false);
+      return;
+    }
+    setArmed(true);
+    timer.current = setTimeout(() => setArmed(false), 8000);
+  };
+
+  return (
+    <Pressable style={[styles.deleteButton, armed && styles.deleteButtonArmed]} onPress={handlePress}>
+      <Text style={[styles.deleteLabel, armed && styles.deleteLabelArmed]}>
+        {armed ? 'Tocá de nuevo para confirmar' : label}
+      </Text>
+    </Pressable>
+  );
+}
+
 /** Acepta coma o punto como separador decimal ("15,5" / "0.048"); NaN si no parsea */
 export function parseAmount(raw: string): number {
   return Number(raw.trim().replace(',', '.'));
@@ -149,6 +205,47 @@ const makeStyles = (c: ThemeColors) =>
     saveLabel: {
       fontSize: font.body,
       fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    dayRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: c.bg,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    dayButton: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayButtonDisabled: {
+      opacity: 0.5,
+    },
+    dayLabel: {
+      fontSize: font.body,
+      fontWeight: '600',
+      color: c.ink,
+    },
+    deleteButton: {
+      backgroundColor: c.dangerSoft,
+      borderRadius: radius.md,
+      paddingVertical: spacing.md + 2,
+      alignItems: 'center',
+    },
+    deleteButtonArmed: {
+      backgroundColor: c.danger,
+    },
+    deleteLabel: {
+      fontSize: font.body,
+      fontWeight: '600',
+      color: c.danger,
+    },
+    deleteLabelArmed: {
       color: '#FFFFFF',
     },
   });

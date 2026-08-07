@@ -20,6 +20,10 @@ export interface ThemeColors {
   expenseSoft: string;
   inkSoft: string;
   danger: string;
+  dangerSoft: string;
+  /** Estado "atención" (ej: cotización desactualizada) — siempre con ícono + texto */
+  warningText: string;
+  warningSoft: string;
   /** Texto/ícono sobre fondos `ink` (FAB, chips activos) */
   inverse: string;
 }
@@ -43,6 +47,9 @@ export const lightColors: ThemeColors = {
   expenseSoft: '#FDEEE3',
   inkSoft: '#EEF1F5',
   danger: '#DC2626',
+  dangerSoft: '#FEE9E9',
+  warningText: '#92400E',
+  warningSoft: '#FEF3C7',
   inverse: '#FFFFFF',
 };
 
@@ -63,6 +70,9 @@ export const darkColors: ThemeColors = {
   expenseSoft: '#33231A',
   inkSoft: '#222834',
   danger: '#F87171',
+  dangerSoft: '#3B2023',
+  warningText: '#FBBF24',
+  warningSoft: '#39301A',
   inverse: '#171A21',
 };
 

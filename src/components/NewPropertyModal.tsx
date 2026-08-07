@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useApp } from '../store/AppContext';
-import { Currency } from '../types';
-import { Field, FormInput, parseAmount, SaveButton } from './form';
+import { Currency, Property } from '../types';
+import { ConfirmDeleteButton, Field, FormInput, parseAmount, SaveButton } from './form';
 import { SegmentedControl } from './SegmentedControl';
 import { Sheet } from './Sheet';
 
@@ -12,10 +12,12 @@ import { Sheet } from './Sheet';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** Si viene, el modal edita esa propiedad en vez de crear una nueva */
+  property?: Property | null;
 }
 
-export function NewPropertyModal({ visible, onClose }: Props) {
-  const { addProperty } = useApp();
+export function NewPropertyModal({ visible, onClose, property }: Props) {
+  const { addProperty, updateProperty, deleteProperty } = useApp();
   const [name, setName] = useState('');
   const [rent, setRent] = useState('');
   const [rentCurrency, setRentCurrency] = useState<Currency>('ARS');
@@ -24,25 +26,38 @@ export function NewPropertyModal({ visible, onClose }: Props) {
   const [value, setValue] = useState('');
   const [valueCurrency, setValueCurrency] = useState<Currency>('USD');
 
+  const editing = property ?? null;
+
+  useEffect(() => {
+    if (!visible) return;
+    if (editing) {
+      setName(editing.name);
+      setRent(String(editing.monthlyRent).replace('.', ','));
+      setRentCurrency(editing.rentCurrency);
+      setExpenses(String(editing.monthlyExpenses).replace('.', ','));
+      setExpensesCurrency(editing.expensesCurrency);
+      setValue(String(editing.estimatedValue).replace('.', ','));
+      setValueCurrency(editing.valueCurrency);
+    } else {
+      setName('');
+      setRent('');
+      setRentCurrency('ARS');
+      setExpenses('');
+      setExpensesCurrency('ARS');
+      setValue('');
+      setValueCurrency('USD');
+    }
+  }, [visible, editing]);
+
   const parsedRent = parseAmount(rent);
   const parsedExpenses = expenses.trim() === '' ? 0 : parseAmount(expenses);
   const parsedValue = parseAmount(value);
   const valid =
     name.trim().length > 0 && parsedRent >= 0 && parsedExpenses >= 0 && parsedValue > 0;
 
-  const reset = () => {
-    setName('');
-    setRent('');
-    setRentCurrency('ARS');
-    setExpenses('');
-    setExpensesCurrency('ARS');
-    setValue('');
-    setValueCurrency('USD');
-  };
-
   const handleSave = async () => {
     if (!valid) return;
-    await addProperty({
+    const data = {
       name: name.trim(),
       monthlyRent: parsedRent,
       rentCurrency,
@@ -50,13 +65,27 @@ export function NewPropertyModal({ visible, onClose }: Props) {
       expensesCurrency,
       estimatedValue: parsedValue,
       valueCurrency,
-    });
-    reset();
+    };
+    if (editing) {
+      await updateProperty({ ...data, id: editing.id });
+    } else {
+      await addProperty(data);
+    }
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!editing) return;
+    await deleteProperty(editing.id);
     onClose();
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Nueva propiedad">
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={editing ? 'Editar propiedad' : 'Nueva propiedad'}
+    >
       <Field label="Nombre">
         <FormInput value={name} onChangeText={setName} placeholder="Ej: Depto 2 amb · Palermo" />
       </Field>
@@ -85,7 +114,9 @@ export function NewPropertyModal({ visible, onClose }: Props) {
         onCurrency={setValueCurrency}
       />
 
-      <SaveButton label="Agregar" disabled={!valid} onPress={handleSave} />
+      <SaveButton label={editing ? 'Guardar' : 'Agregar'} disabled={!valid} onPress={handleSave} />
+
+      {editing && <ConfirmDeleteButton label="Eliminar propiedad" onDelete={handleDelete} />}
     </Sheet>
   );
 }

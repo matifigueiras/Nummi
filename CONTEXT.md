@@ -65,5 +65,10 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Etapa 1 completa: app funcional con datos simulados en memoria (`src/data/mock.ts`)
 - Tema claro/oscuro/sistema: selector en "Más", paletas en `src/theme.ts`, contexto en `src/store/ThemeContext.tsx` (la elección vive en memoria hasta que exista almacenamiento)
 - Alta de patrimonio: botón "+" por sección en Patrimonio (acciones, cripto y propiedades) con formularios en sheet
+- Transferencias entre cajas: dos patas vinculadas por `transferId`; cuentan para los saldos pero se excluyen de ingresos/gastos del mes. No se editan: se eliminan (ambas patas) y se recargan
+- Edición y borrado: tap en cualquier movimiento, posición o propiedad abre su formulario precargado, con botón de eliminar en dos pasos
+- Fecha del movimiento elegible (stepper de días, sin futuro)
+- Meta de ahorro editable (tile de Home o desde Más) con % real sin recortar
+- Indicador de cotización desactualizada cuando falla dolarapi (ícono + "último valor hace X")
 - Toda la app habla con la interfaz `DataRepository` (`src/data/repository.ts`) — para conectar una API/base de datos real alcanza con escribir otra implementación y cambiar un export
 - Almacenamiento persistente: pendiente, etapa aparte. **Google Sheets queda descartado explícitamente como backend** — la persistencia futura será una API/base de datos propia detrás de `DataRepository`

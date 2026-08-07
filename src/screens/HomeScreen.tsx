@@ -4,12 +4,19 @@ import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
 import { Donut } from '../components/Donut';
 import { MonthNav } from '../components/MonthNav';
+import { SavingsGoalModal } from '../components/SavingsGoalModal';
 import { Screen } from '../components/Screen';
 import { StatTile } from '../components/StatTile';
 import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
-import { formatMoney, formatMoneyCompact, monthKey, monthKeyOf } from '../utils/format';
+import {
+  formatMoney,
+  formatMoneyCompact,
+  formatRelativeTime,
+  monthKey,
+  monthKeyOf,
+} from '../utils/format';
 
 // Nombre mock — cuando haya perfil de usuario real sale de ahí.
 const USER_NAME = 'Mati';
@@ -30,15 +37,18 @@ export function HomeScreen() {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   const isCurrentMonth = monthKeyOf(month) === monthKeyOf(new Date());
 
   // Consolidado en ARS: los movimientos en USD se convierten al blue (venta).
+  // Las transferencias entre cajas no son ingresos ni gastos reales.
   const { income, expense } = useMemo(() => {
     const key = monthKeyOf(month);
     let income = 0;
     let expense = 0;
     for (const mov of movements) {
+      if (mov.transferId) continue;
       if (monthKey(mov.date) !== key) continue;
       const inArs = mov.currency === 'USD' ? mov.amount * dolar.rate.venta : mov.amount;
       if (mov.type === 'ingreso') income += inArs;
@@ -48,7 +58,9 @@ export function HomeScreen() {
   }, [movements, month, dolar.rate.venta]);
 
   const savings = income - expense;
-  const goalProgress = savingsGoal.amount > 0 ? Math.max(0, Math.min(1, savings / savingsGoal.amount)) : 0;
+  // Porcentaje real (puede superar 100%); la barra visual se recorta a 100%
+  const goalPct = savingsGoal.amount > 0 ? Math.max(0, (savings / savingsGoal.amount) * 100) : 0;
+  const goalBarProgress = Math.min(1, goalPct / 100);
 
   return (
     <Screen>
@@ -71,11 +83,30 @@ export function HomeScreen() {
           <Feather name="dollar-sign" size={13} color={colors.accent} />
         </View>
         <Text style={styles.dolarLabel}>Dólar blue</Text>
-        <Text style={styles.dolarValue}>
-          {dolar.loading
-            ? '—'
-            : `Compra $${dolar.rate.compra.toLocaleString('es-AR')} · Venta $${dolar.rate.venta.toLocaleString('es-AR')}`}
-        </Text>
+        <View style={styles.dolarRight}>
+          <Text style={styles.dolarValue}>
+            {dolar.loading
+              ? '—'
+              : `Compra $${dolar.rate.compra.toLocaleString('es-AR')} · Venta $${dolar.rate.venta.toLocaleString('es-AR')}`}
+          </Text>
+          {!dolar.loading &&
+            (dolar.stale ? (
+              <View style={styles.dolarStaleRow}>
+                <Feather name="alert-triangle" size={11} color={colors.warningText} />
+                <Text style={styles.dolarStaleText}>
+                  {dolar.lastUpdated
+                    ? `Sin conexión · último valor ${formatRelativeTime(dolar.lastUpdated)}`
+                    : 'Sin conexión · valores de referencia'}
+                </Text>
+              </View>
+            ) : (
+              dolar.lastUpdated && (
+                <Text style={styles.dolarUpdated}>
+                  Actualizado {formatRelativeTime(dolar.lastUpdated)}
+                </Text>
+              )
+            ))}
+        </View>
       </View>
 
       <View style={styles.grid}>
@@ -106,10 +137,11 @@ export function HomeScreen() {
           iconBg={colors.inkSoft}
           label="Meta de ahorro"
           value={formatMoneyCompact(savingsGoal.amount, savingsGoal.currency)}
-          sub={`${Math.round(goalProgress * 100)}% alcanzado`}
+          sub={`${Math.round(goalPct)}% alcanzado · tocá para editar`}
+          onPress={() => setShowGoalModal(true)}
         >
           <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${goalProgress * 100}%` }]} />
+            <View style={[styles.progressFill, { width: `${goalBarProgress * 100}%` }]} />
           </View>
         </StatTile>
       </View>
@@ -118,6 +150,8 @@ export function HomeScreen() {
         <Text style={styles.cardTitle}>Ingresos vs. Gastos</Text>
         <Donut income={income} expense={expense} />
       </Card>
+
+      <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />
     </Screen>
   );
 }
@@ -159,12 +193,29 @@ const makeStyles = (c: ThemeColors) =>
       fontWeight: '600',
       color: c.ink,
     },
-    dolarValue: {
+    dolarRight: {
       flex: 1,
-      textAlign: 'right',
+      alignItems: 'flex-end',
+      gap: 1,
+    },
+    dolarValue: {
       fontSize: font.label,
       color: c.secondary,
       fontVariant: ['tabular-nums'],
+    },
+    dolarUpdated: {
+      fontSize: font.caption,
+      color: c.muted,
+    },
+    dolarStaleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    dolarStaleText: {
+      fontSize: font.caption,
+      color: c.warningText,
+      fontWeight: '600',
     },
     grid: {
       flexDirection: 'row',

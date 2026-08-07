@@ -15,7 +15,9 @@ export function PatrimonioScreen() {
   const { accounts, movements, positions, properties, dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [positionModal, setPositionModal] = useState<PositionKind | null>(null);
+  const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [propertyModal, setPropertyModal] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   // Todo el patrimonio se consolida en USD (referencia: blue venta).
   const cashUsd = useMemo(() => {
@@ -76,7 +78,7 @@ export function PatrimonioScreen() {
         {stocks.length === 0 ? (
           <Text style={styles.empty}>Sin posiciones todavía.</Text>
         ) : (
-          stocks.map((p) => <PositionRow key={p.id} position={p} />)
+          stocks.map((p) => <PositionRow key={p.id} position={p} onPress={setEditingPosition} />)
         )}
       </Card>
 
@@ -85,7 +87,7 @@ export function PatrimonioScreen() {
         {crypto.length === 0 ? (
           <Text style={styles.empty}>Sin posiciones todavía.</Text>
         ) : (
-          crypto.map((p) => <PositionRow key={p.id} position={p} />)
+          crypto.map((p) => <PositionRow key={p.id} position={p} onPress={setEditingPosition} />)
         )}
       </Card>
 
@@ -94,16 +96,27 @@ export function PatrimonioScreen() {
         {properties.length === 0 ? (
           <Text style={styles.empty}>Sin propiedades todavía.</Text>
         ) : (
-          properties.map((p) => <PropertyRow key={p.id} property={p} />)
+          properties.map((p) => <PropertyRow key={p.id} property={p} onPress={setEditingProperty} />)
         )}
       </Card>
 
       <NewPositionModal
-        visible={positionModal !== null}
-        onClose={() => setPositionModal(null)}
-        kind={positionModal ?? 'accion'}
+        visible={positionModal !== null || editingPosition !== null}
+        onClose={() => {
+          setPositionModal(null);
+          setEditingPosition(null);
+        }}
+        kind={positionModal ?? editingPosition?.kind ?? 'accion'}
+        position={editingPosition}
       />
-      <NewPropertyModal visible={propertyModal} onClose={() => setPropertyModal(false)} />
+      <NewPropertyModal
+        visible={propertyModal || editingProperty !== null}
+        onClose={() => {
+          setPropertyModal(false);
+          setEditingProperty(null);
+        }}
+        property={editingProperty}
+      />
     </Screen>
   );
 }
@@ -141,14 +154,20 @@ function BreakdownRow({
   );
 }
 
-function PositionRow({ position }: { position: Position }) {
+function PositionRow({
+  position,
+  onPress,
+}: {
+  position: Position;
+  onPress: (position: Position) => void;
+}) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const value = position.quantity * position.currentPrice;
   const pnlPct = ((position.currentPrice - position.buyPrice) / position.buyPrice) * 100;
   const gain = pnlPct >= 0;
   return (
-    <View style={styles.row}>
+    <Pressable style={styles.row} onPress={() => onPress(position)}>
       <View style={styles.tickerBadge}>
         <Text style={styles.tickerText}>{position.ticker.slice(0, 4)}</Text>
       </View>
@@ -174,11 +193,17 @@ function PositionRow({ position }: { position: Position }) {
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function PropertyRow({ property }: { property: Property }) {
+function PropertyRow({
+  property,
+  onPress,
+}: {
+  property: Property;
+  onPress: (property: Property) => void;
+}) {
   const { colors } = useTheme();
   const { dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
@@ -189,7 +214,7 @@ function PropertyRow({ property }: { property: Property }) {
   const valueUsd = toUsd(property.estimatedValue, property.valueCurrency, dolar.rate.venta);
   const yieldPct = (netMonthlyUsd * 12 * 100) / valueUsd;
   return (
-    <View style={styles.row}>
+    <Pressable style={styles.row} onPress={() => onPress(property)}>
       <View style={[styles.tickerBadge, { backgroundColor: colors.accentSoft }]}>
         <Feather name="key" size={15} color={colors.accent} />
       </View>
@@ -210,7 +235,7 @@ function PropertyRow({ property }: { property: Property }) {
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

@@ -17,8 +17,8 @@ export const mockMovements: Movement[] = [
   { id: 'm05', date: '2026-05-14', description: 'Cena con amigos', category: 'Salidas', type: 'gasto', currency: 'ARS', amount: 62000 },
   { id: 'm06', date: '2026-05-18', description: 'Internet + celular', category: 'Servicios', type: 'gasto', currency: 'ARS', amount: 48000 },
   { id: 'm07', date: '2026-05-22', description: 'Supermercado Día', category: 'Comida', type: 'gasto', currency: 'ARS', amount: 96000 },
-  { id: 'm08', date: '2026-05-27', description: 'Compra USD ahorro', category: 'Ahorro', type: 'gasto', currency: 'ARS', amount: 500000 },
-  { id: 'm09', date: '2026-05-27', description: 'Compra USD ahorro', category: 'Ahorro', type: 'ingreso', currency: 'USD', amount: 380 },
+  { id: 'm08', date: '2026-05-27', description: 'Compra USD', category: 'Transferencia', type: 'gasto', currency: 'ARS', amount: 500000, transferId: 't1' },
+  { id: 'm09', date: '2026-05-27', description: 'Compra USD', category: 'Transferencia', type: 'ingreso', currency: 'USD', amount: 380, transferId: 't1' },
 
   // Junio 2026
   { id: 'm10', date: '2026-06-01', description: 'Sueldo', category: 'Sueldo', type: 'ingreso', currency: 'ARS', amount: 2650000 },
@@ -29,8 +29,8 @@ export const mockMovements: Movement[] = [
   { id: 'm15', date: '2026-06-15', description: 'Regalo cumpleaños', category: 'Otros', type: 'gasto', currency: 'ARS', amount: 55000 },
   { id: 'm16', date: '2026-06-18', description: 'Internet + celular', category: 'Servicios', type: 'gasto', currency: 'ARS', amount: 48000 },
   { id: 'm17', date: '2026-06-21', description: 'Suscripciones (Spotify, Netflix)', category: 'Servicios', type: 'gasto', currency: 'USD', amount: 22 },
-  { id: 'm18', date: '2026-06-25', description: 'Venta dólares', category: 'Ahorro', type: 'gasto', currency: 'USD', amount: 200 },
-  { id: 'm19', date: '2026-06-25', description: 'Venta dólares', category: 'Ahorro', type: 'ingreso', currency: 'ARS', amount: 268000 },
+  { id: 'm18', date: '2026-06-25', description: 'Venta USD', category: 'Transferencia', type: 'gasto', currency: 'USD', amount: 200, transferId: 't2' },
+  { id: 'm19', date: '2026-06-25', description: 'Venta USD', category: 'Transferencia', type: 'ingreso', currency: 'ARS', amount: 268000, transferId: 't2' },
   { id: 'm20', date: '2026-06-28', description: 'Farmacia', category: 'Salud', type: 'gasto', currency: 'ARS', amount: 34000 },
 
   // Julio 2026
@@ -38,8 +38,8 @@ export const mockMovements: Movement[] = [
   { id: 'm22', date: '2026-07-01', description: 'Aguinaldo', category: 'Sueldo', type: 'ingreso', currency: 'ARS', amount: 1450000 },
   { id: 'm23', date: '2026-07-03', description: 'Alquiler depto', category: 'Vivienda', type: 'gasto', currency: 'ARS', amount: 650000 },
   { id: 'm24', date: '2026-07-05', description: 'Supermercado Coto', category: 'Comida', type: 'gasto', currency: 'ARS', amount: 195000 },
-  { id: 'm25', date: '2026-07-08', description: 'Compra USD ahorro', category: 'Ahorro', type: 'gasto', currency: 'ARS', amount: 1400000 },
-  { id: 'm26', date: '2026-07-08', description: 'Compra USD ahorro', category: 'Ahorro', type: 'ingreso', currency: 'USD', amount: 1000 },
+  { id: 'm25', date: '2026-07-08', description: 'Compra USD', category: 'Transferencia', type: 'gasto', currency: 'ARS', amount: 1400000, transferId: 't3' },
+  { id: 'm26', date: '2026-07-08', description: 'Compra USD', category: 'Transferencia', type: 'ingreso', currency: 'USD', amount: 1000, transferId: 't3' },
   { id: 'm27', date: '2026-07-12', description: 'Proyecto freelance', category: 'Freelance', type: 'ingreso', currency: 'USD', amount: 500 },
   { id: 'm28', date: '2026-07-15', description: 'Escapada a Mendoza', category: 'Viajes', type: 'gasto', currency: 'ARS', amount: 420000 },
   { id: 'm29', date: '2026-07-18', description: 'Internet + celular', category: 'Servicios', type: 'gasto', currency: 'ARS', amount: 52000 },

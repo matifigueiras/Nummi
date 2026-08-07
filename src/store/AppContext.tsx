@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { repository } from '../data/repository';
+import { NewTransfer, repository } from '../data/repository';
 import { DolarBlue, useDolarBlue } from '../services/dolar';
 import { Account, Movement, Position, Property, SavingsGoal } from '../types';
 
@@ -12,8 +12,16 @@ interface AppState {
   savingsGoal: SavingsGoal;
   dolar: DolarBlue;
   addMovement: (movement: Omit<Movement, 'id'>) => Promise<void>;
+  updateMovement: (movement: Movement) => Promise<void>;
+  deleteMovement: (id: string) => Promise<void>;
+  addTransfer: (transfer: NewTransfer) => Promise<void>;
   addPosition: (position: Omit<Position, 'id'>) => Promise<void>;
+  updatePosition: (position: Position) => Promise<void>;
+  deletePosition: (id: string) => Promise<void>;
   addProperty: (property: Omit<Property, 'id'>) => Promise<void>;
+  updateProperty: (property: Property) => Promise<void>;
+  deleteProperty: (id: string) => Promise<void>;
+  updateSavingsGoal: (goal: SavingsGoal) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -45,19 +53,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const addMovement = useCallback(async (movement: Omit<Movement, 'id'>) => {
-    const created = await repository.addMovement(movement);
-    setMovements((prev) => [...prev, created]);
+  // Después de cada mutación se relee todo del repositorio: una sola fuente de
+  // verdad y cero riesgo de que el estado local se desincronice.
+  const refreshMovements = useCallback(async () => {
+    setMovements(await repository.getMovements());
   }, []);
 
+  const addMovement = useCallback(
+    async (movement: Omit<Movement, 'id'>) => {
+      await repository.addMovement(movement);
+      await refreshMovements();
+    },
+    [refreshMovements],
+  );
+
+  const updateMovement = useCallback(
+    async (movement: Movement) => {
+      await repository.updateMovement(movement);
+      await refreshMovements();
+    },
+    [refreshMovements],
+  );
+
+  const deleteMovement = useCallback(
+    async (id: string) => {
+      await repository.deleteMovement(id);
+      await refreshMovements();
+    },
+    [refreshMovements],
+  );
+
+  const addTransfer = useCallback(
+    async (transfer: NewTransfer) => {
+      await repository.addTransfer(transfer);
+      await refreshMovements();
+    },
+    [refreshMovements],
+  );
+
   const addPosition = useCallback(async (position: Omit<Position, 'id'>) => {
-    const created = await repository.addPosition(position);
-    setPositions((prev) => [...prev, created]);
+    await repository.addPosition(position);
+    setPositions(await repository.getPositions());
+  }, []);
+
+  const updatePosition = useCallback(async (position: Position) => {
+    await repository.updatePosition(position);
+    setPositions(await repository.getPositions());
+  }, []);
+
+  const deletePosition = useCallback(async (id: string) => {
+    await repository.deletePosition(id);
+    setPositions(await repository.getPositions());
   }, []);
 
   const addProperty = useCallback(async (property: Omit<Property, 'id'>) => {
-    const created = await repository.addProperty(property);
-    setProperties((prev) => [...prev, created]);
+    await repository.addProperty(property);
+    setProperties(await repository.getProperties());
+  }, []);
+
+  const updateProperty = useCallback(async (property: Property) => {
+    await repository.updateProperty(property);
+    setProperties(await repository.getProperties());
+  }, []);
+
+  const deleteProperty = useCallback(async (id: string) => {
+    await repository.deleteProperty(id);
+    setProperties(await repository.getProperties());
+  }, []);
+
+  const updateSavingsGoal = useCallback(async (goal: SavingsGoal) => {
+    setSavingsGoal(await repository.setSavingsGoal(goal));
   }, []);
 
   const value = useMemo(
@@ -70,8 +135,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       savingsGoal,
       dolar,
       addMovement,
+      updateMovement,
+      deleteMovement,
+      addTransfer,
       addPosition,
+      updatePosition,
+      deletePosition,
       addProperty,
+      updateProperty,
+      deleteProperty,
+      updateSavingsGoal,
     }),
     [
       loading,
@@ -82,8 +155,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       savingsGoal,
       dolar,
       addMovement,
+      updateMovement,
+      deleteMovement,
+      addTransfer,
       addPosition,
+      updatePosition,
+      deletePosition,
       addProperty,
+      updateProperty,
+      deleteProperty,
+      updateSavingsGoal,
     ],
   );
 

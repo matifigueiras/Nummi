@@ -17,6 +17,8 @@ export interface DolarBlue {
   loading: boolean;
   /** true si el último fetch falló y se está mostrando un valor viejo/fallback */
   stale: boolean;
+  /** Momento del último fetch exitoso (null si nunca se pudo actualizar) */
+  lastUpdated: Date | null;
   refresh: () => void;
 }
 
@@ -24,6 +26,7 @@ export function useDolarBlue(): DolarBlue {
   const [rate, setRate] = useState<DolarRate>(FALLBACK_RATE);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const fetching = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -40,6 +43,7 @@ export function useDolarBlue(): DolarBlue {
           fechaActualizacion: data.fechaActualizacion ?? new Date().toISOString(),
         });
         setStale(false);
+        setLastUpdated(new Date());
       }
     } catch {
       setStale(true);
@@ -62,5 +66,5 @@ export function useDolarBlue(): DolarBlue {
     };
   }, [refresh]);
 
-  return { rate, loading, stale, refresh };
+  return { rate, loading, stale, lastUpdated, refresh };
 }

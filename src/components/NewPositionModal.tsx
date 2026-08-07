@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../store/AppContext';
-import { Currency, PositionKind } from '../types';
-import { Field, FormInput, parseAmount, SaveButton } from './form';
+import { Currency, Position, PositionKind } from '../types';
+import { ConfirmDeleteButton, Field, FormInput, parseAmount, SaveButton } from './form';
 import { SegmentedControl } from './SegmentedControl';
 import { Sheet } from './Sheet';
 
@@ -9,10 +9,12 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   kind: PositionKind;
+  /** Si viene, el modal edita esa posición en vez de crear una nueva */
+  position?: Position | null;
 }
 
-export function NewPositionModal({ visible, onClose, kind }: Props) {
-  const { addPosition } = useApp();
+export function NewPositionModal({ visible, onClose, kind, position }: Props) {
+  const { addPosition, updatePosition, deletePosition } = useApp();
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<Currency>('USD');
@@ -20,47 +22,72 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
   const [buyPrice, setBuyPrice] = useState('');
   const [currentPrice, setCurrentPrice] = useState('');
 
+  const editing = position ?? null;
+  const effectiveKind = editing?.kind ?? kind;
+
+  useEffect(() => {
+    if (!visible) return;
+    if (editing) {
+      setTicker(editing.ticker);
+      setName(editing.name);
+      setCurrency(editing.currency);
+      setQuantity(String(editing.quantity).replace('.', ','));
+      setBuyPrice(String(editing.buyPrice).replace('.', ','));
+      setCurrentPrice(String(editing.currentPrice).replace('.', ','));
+    } else {
+      setTicker('');
+      setName('');
+      setCurrency('USD');
+      setQuantity('');
+      setBuyPrice('');
+      setCurrentPrice('');
+    }
+  }, [visible, editing]);
+
   const parsedQuantity = parseAmount(quantity);
   const parsedBuyPrice = parseAmount(buyPrice);
   const parsedCurrentPrice = parseAmount(currentPrice);
   const valid =
     ticker.trim().length > 0 && parsedQuantity > 0 && parsedBuyPrice > 0 && parsedCurrentPrice > 0;
 
-  const reset = () => {
-    setTicker('');
-    setName('');
-    setCurrency('USD');
-    setQuantity('');
-    setBuyPrice('');
-    setCurrentPrice('');
-  };
-
   const handleSave = async () => {
     if (!valid) return;
-    await addPosition({
-      kind,
+    const data = {
+      kind: effectiveKind,
       ticker: ticker.trim().toUpperCase(),
       name: name.trim() || ticker.trim().toUpperCase(),
       currency,
       quantity: parsedQuantity,
       buyPrice: parsedBuyPrice,
       currentPrice: parsedCurrentPrice,
-    });
-    reset();
+    };
+    if (editing) {
+      await updatePosition({ ...data, id: editing.id });
+    } else {
+      await addPosition(data);
+    }
     onClose();
   };
+
+  const handleDelete = async () => {
+    if (!editing) return;
+    await deletePosition(editing.id);
+    onClose();
+  };
+
+  const noun = effectiveKind === 'accion' ? 'acción' : 'cripto';
 
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
-      title={kind === 'accion' ? 'Nueva acción' : 'Nueva cripto'}
+      title={editing ? `Editar ${noun}` : `Nueva ${noun}`}
     >
       <Field label="Ticker">
         <FormInput
           value={ticker}
           onChangeText={setTicker}
-          placeholder={kind === 'accion' ? 'Ej: AAPL' : 'Ej: BTC'}
+          placeholder={effectiveKind === 'accion' ? 'Ej: AAPL' : 'Ej: BTC'}
           autoCapitalize="characters"
         />
       </Field>
@@ -69,7 +96,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
         <FormInput
           value={name}
           onChangeText={setName}
-          placeholder={kind === 'accion' ? 'Ej: Apple' : 'Ej: Bitcoin'}
+          placeholder={effectiveKind === 'accion' ? 'Ej: Apple' : 'Ej: Bitcoin'}
         />
       </Field>
 
@@ -88,7 +115,7 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
         <FormInput
           value={quantity}
           onChangeText={setQuantity}
-          placeholder={kind === 'accion' ? 'Ej: 10' : 'Ej: 0,05'}
+          placeholder={effectiveKind === 'accion' ? 'Ej: 10' : 'Ej: 0,05'}
           keyboardType="decimal-pad"
           inputMode="decimal"
         />
@@ -114,7 +141,9 @@ export function NewPositionModal({ visible, onClose, kind }: Props) {
         />
       </Field>
 
-      <SaveButton label="Agregar" disabled={!valid} onPress={handleSave} />
+      <SaveButton label={editing ? 'Guardar' : 'Agregar'} disabled={!valid} onPress={handleSave} />
+
+      {editing && <ConfirmDeleteButton label={`Eliminar ${noun}`} onDelete={handleDelete} />}
     </Sheet>
   );
 }
