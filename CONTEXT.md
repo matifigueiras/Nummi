@@ -71,4 +71,5 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Meta de ahorro editable (tile de Home o desde Más) con % real sin recortar
 - Indicador de cotización desactualizada cuando falla dolarapi (ícono + "último valor hace X")
 - Toda la app habla con la interfaz `DataRepository` (`src/data/repository.ts`) — para conectar una API/base de datos real alcanza con escribir otra implementación y cambiar un export
-- Almacenamiento persistente: pendiente, etapa aparte. **Google Sheets queda descartado explícitamente como backend** — la persistencia futura será una API/base de datos propia detrás de `DataRepository`
+- Persistencia local implementada como puente: `LocalStorageRepository` guarda todo en el dispositivo (AsyncStorage / localStorage en web), incluido el tema elegido. "Restablecer datos de ejemplo" disponible en Más
+- Backend real (API/base de datos propia): pendiente, etapa aparte. **Google Sheets queda descartado explícitamente como backend** — cuando llegue, se escribe otra implementación de `DataRepository` y se cambia un export

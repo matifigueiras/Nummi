@@ -22,6 +22,8 @@ interface AppState {
   updateProperty: (property: Property) => Promise<void>;
   deleteProperty: (id: string) => Promise<void>;
   updateSavingsGoal: (goal: SavingsGoal) => Promise<void>;
+  /** Borra todo lo guardado y vuelve a los datos de ejemplo */
+  resetData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -35,23 +37,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [savingsGoal, setSavingsGoal] = useState<SavingsGoal>({ currency: 'ARS', amount: 0 });
   const dolar = useDolarBlue();
 
-  useEffect(() => {
-    (async () => {
-      const [acc, movs, pos, props, goal] = await Promise.all([
-        repository.getAccounts(),
-        repository.getMovements(),
-        repository.getPositions(),
-        repository.getProperties(),
-        repository.getSavingsGoal(),
-      ]);
-      setAccounts(acc);
-      setMovements(movs);
-      setPositions(pos);
-      setProperties(props);
-      setSavingsGoal(goal);
-      setLoading(false);
-    })();
+  const loadAll = useCallback(async () => {
+    const [acc, movs, pos, props, goal] = await Promise.all([
+      repository.getAccounts(),
+      repository.getMovements(),
+      repository.getPositions(),
+      repository.getProperties(),
+      repository.getSavingsGoal(),
+    ]);
+    setAccounts(acc);
+    setMovements(movs);
+    setPositions(pos);
+    setProperties(props);
+    setSavingsGoal(goal);
   }, []);
+
+  useEffect(() => {
+    loadAll().then(() => setLoading(false));
+  }, [loadAll]);
 
   // Después de cada mutación se relee todo del repositorio: una sola fuente de
   // verdad y cero riesgo de que el estado local se desincronice.
@@ -125,6 +128,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSavingsGoal(await repository.setSavingsGoal(goal));
   }, []);
 
+  const resetData = useCallback(async () => {
+    await repository.resetData();
+    await loadAll();
+  }, [loadAll]);
+
   const value = useMemo(
     () => ({
       loading,
@@ -145,6 +153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateProperty,
       deleteProperty,
       updateSavingsGoal,
+      resetData,
     }),
     [
       loading,
@@ -165,6 +174,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateProperty,
       deleteProperty,
       updateSavingsGoal,
+      resetData,
     ],
   );
 

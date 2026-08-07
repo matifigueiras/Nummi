@@ -1,11 +1,14 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { darkColors, lightColors, ThemeColors } from '../theme';
 
-// El modo elegido vive en memoria (la persistencia llega con el resto del
-// almacenamiento). 'system' sigue la preferencia del SO/navegador.
+// El modo elegido se persiste en el dispositivo. 'system' sigue la
+// preferencia del SO/navegador.
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+const THEME_KEY = 'nummi:theme';
 
 interface ThemeState {
   mode: ThemeMode;
@@ -19,13 +22,27 @@ const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('system');
+
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_KEY).then((saved) => {
+      if (saved === 'light' || saved === 'dark' || saved === 'system') setModeState(saved);
+    });
+  }, []);
 
   const scheme: 'light' | 'dark' =
     mode === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : mode;
 
   const value = useMemo(
-    () => ({ mode, setMode, scheme, colors: scheme === 'dark' ? darkColors : lightColors }),
+    () => ({
+      mode,
+      setMode: (next: ThemeMode) => {
+        setModeState(next);
+        AsyncStorage.setItem(THEME_KEY, next);
+      },
+      scheme,
+      colors: scheme === 'dark' ? darkColors : lightColors,
+    }),
     [mode, scheme],
   );
 

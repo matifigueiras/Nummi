@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Account, Currency, Movement, Position, Property, SavingsGoal } from '../types';
 import {
   mockAccounts,
@@ -10,6 +11,10 @@ import {
 // Capa de acceso a datos. La app entera habla con esta interfaz — cuando haya
 // una API/base de datos real alcanza con escribir otra implementación de
 // DataRepository y cambiar el export de abajo.
+//
+// La implementación actual persiste en el dispositivo (AsyncStorage; en web,
+// localStorage). Es el puente hasta la API real: los datos sobreviven al
+// recargar, pero viven solo en este dispositivo.
 
 export interface NewTransfer {
   date: string;
@@ -38,47 +43,96 @@ export interface DataRepository {
   deleteProperty(id: string): Promise<void>;
   getSavingsGoal(): Promise<SavingsGoal>;
   setSavingsGoal(goal: SavingsGoal): Promise<SavingsGoal>;
+  /** Borra todo y vuelve a los datos de ejemplo */
+  resetData(): Promise<void>;
 }
 
-class InMemoryRepository implements DataRepository {
-  private movements: Movement[] = [...mockMovements];
-  private positions: Position[] = [...mockPositions];
-  private properties: Property[] = [...mockProperties];
-  private savingsGoal: SavingsGoal = { ...mockSavingsGoal };
-  private nextId = mockMovements.length + 1;
-  private nextPositionId = mockPositions.length + 1;
-  private nextPropertyId = mockProperties.length + 1;
-  private nextTransferId = 4; // el mock usa t1..t3
+interface StoredData {
+  version: 1;
+  movements: Movement[];
+  positions: Position[];
+  properties: Property[];
+  savingsGoal: SavingsGoal;
+}
+
+const STORAGE_KEY = 'nummi:data:v1';
+
+function seed(): StoredData {
+  return {
+    version: 1,
+    movements: [...mockMovements],
+    positions: [...mockPositions],
+    properties: [...mockProperties],
+    savingsGoal: { ...mockSavingsGoal },
+  };
+}
+
+/** Id único sin contador persistido: timestamp + sufijo aleatorio */
+function newId(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+class LocalStorageRepository implements DataRepository {
+  private state: StoredData | null = null;
+
+  private async load(): Promise<StoredData> {
+    if (this.state) return this.state;
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.version === 1) {
+          this.state = parsed as StoredData;
+          return this.state;
+        }
+      }
+    } catch {
+      // Datos corruptos o ilegibles: se vuelve al seed
+    }
+    this.state = seed();
+    await this.persist();
+    return this.state;
+  }
+
+  private async persist(): Promise<void> {
+    if (this.state) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+  }
 
   async getAccounts(): Promise<Account[]> {
     return [...mockAccounts];
   }
 
   async getMovements(): Promise<Movement[]> {
-    return [...this.movements];
+    return [...(await this.load()).movements];
   }
 
   async addMovement(movement: Omit<Movement, 'id'>): Promise<Movement> {
-    const created: Movement = { ...movement, id: `m${String(this.nextId++).padStart(2, '0')}` };
-    this.movements.push(created);
+    const state = await this.load();
+    const created: Movement = { ...movement, id: newId('m') };
+    state.movements.push(created);
+    await this.persist();
     return created;
   }
 
   async updateMovement(movement: Movement): Promise<Movement> {
-    this.movements = this.movements.map((m) => (m.id === movement.id ? movement : m));
+    const state = await this.load();
+    state.movements = state.movements.map((m) => (m.id === movement.id ? movement : m));
+    await this.persist();
     return movement;
   }
 
   async deleteMovement(id: string): Promise<void> {
-    const target = this.movements.find((m) => m.id === id);
+    const state = await this.load();
+    const target = state.movements.find((m) => m.id === id);
     if (!target) return;
-    this.movements = target.transferId
-      ? this.movements.filter((m) => m.transferId !== target.transferId)
-      : this.movements.filter((m) => m.id !== id);
+    state.movements = target.transferId
+      ? state.movements.filter((m) => m.transferId !== target.transferId)
+      : state.movements.filter((m) => m.id !== id);
+    await this.persist();
   }
 
   async addTransfer(transfer: NewTransfer): Promise<Movement[]> {
-    const transferId = `t${this.nextTransferId++}`;
+    const transferId = newId('t');
     const to: Currency = transfer.from === 'ARS' ? 'USD' : 'ARS';
     const description =
       transfer.description?.trim() || (transfer.from === 'ARS' ? 'Compra USD' : 'Venta USD');
@@ -99,51 +153,70 @@ class InMemoryRepository implements DataRepository {
   }
 
   async getPositions(): Promise<Position[]> {
-    return [...this.positions];
+    return [...(await this.load()).positions];
   }
 
   async addPosition(position: Omit<Position, 'id'>): Promise<Position> {
-    const created: Position = { ...position, id: `p${this.nextPositionId++}` };
-    this.positions.push(created);
+    const state = await this.load();
+    const created: Position = { ...position, id: newId('p') };
+    state.positions.push(created);
+    await this.persist();
     return created;
   }
 
   async updatePosition(position: Position): Promise<Position> {
-    this.positions = this.positions.map((p) => (p.id === position.id ? position : p));
+    const state = await this.load();
+    state.positions = state.positions.map((p) => (p.id === position.id ? position : p));
+    await this.persist();
     return position;
   }
 
   async deletePosition(id: string): Promise<void> {
-    this.positions = this.positions.filter((p) => p.id !== id);
+    const state = await this.load();
+    state.positions = state.positions.filter((p) => p.id !== id);
+    await this.persist();
   }
 
   async getProperties(): Promise<Property[]> {
-    return [...this.properties];
+    return [...(await this.load()).properties];
   }
 
   async addProperty(property: Omit<Property, 'id'>): Promise<Property> {
-    const created: Property = { ...property, id: `r${this.nextPropertyId++}` };
-    this.properties.push(created);
+    const state = await this.load();
+    const created: Property = { ...property, id: newId('r') };
+    state.properties.push(created);
+    await this.persist();
     return created;
   }
 
   async updateProperty(property: Property): Promise<Property> {
-    this.properties = this.properties.map((p) => (p.id === property.id ? property : p));
+    const state = await this.load();
+    state.properties = state.properties.map((p) => (p.id === property.id ? property : p));
+    await this.persist();
     return property;
   }
 
   async deleteProperty(id: string): Promise<void> {
-    this.properties = this.properties.filter((p) => p.id !== id);
+    const state = await this.load();
+    state.properties = state.properties.filter((p) => p.id !== id);
+    await this.persist();
   }
 
   async getSavingsGoal(): Promise<SavingsGoal> {
-    return { ...this.savingsGoal };
+    return { ...(await this.load()).savingsGoal };
   }
 
   async setSavingsGoal(goal: SavingsGoal): Promise<SavingsGoal> {
-    this.savingsGoal = { ...goal };
-    return { ...this.savingsGoal };
+    const state = await this.load();
+    state.savingsGoal = { ...goal };
+    await this.persist();
+    return { ...goal };
+  }
+
+  async resetData(): Promise<void> {
+    this.state = seed();
+    await this.persist();
   }
 }
 
-export const repository: DataRepository = new InMemoryRepository();
+export const repository: DataRepository = new LocalStorageRepository();

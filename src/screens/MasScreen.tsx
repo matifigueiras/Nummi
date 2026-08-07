@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
+import { ConfirmDeleteButton } from '../components/form';
 import { SavingsGoalModal } from '../components/SavingsGoalModal';
 import { Screen } from '../components/Screen';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { Sheet } from '../components/Sheet';
+import { useApp } from '../store/AppContext';
 import { ThemeMode, useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 
@@ -18,8 +21,10 @@ const PENDING_ITEMS: { icon: keyof typeof Feather.glyphMap; label: string }[] = 
 
 export function MasScreen() {
   const { mode, setMode, colors } = useTheme();
+  const { resetData } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   return (
     <Screen>
@@ -67,11 +72,36 @@ export function MasScreen() {
             </View>
           </View>
         ))}
+        <Pressable style={[styles.item, styles.itemBorder]} onPress={() => setShowResetModal(true)}>
+          <View style={styles.itemIcon}>
+            <ItemIcon icon="rotate-ccw" />
+          </View>
+          <Text style={styles.itemLabel}>Restablecer datos de ejemplo</Text>
+          <Feather name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
       </Card>
 
-      <Text style={styles.footer}>Nummi v0.1 · Datos simulados</Text>
+      <Text style={styles.footer}>Nummi v0.1 · Datos guardados en este dispositivo</Text>
 
       <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />
+
+      <Sheet
+        visible={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="Restablecer datos"
+      >
+        <Text style={styles.resetText}>
+          Se borra todo lo que cargaste (movimientos, posiciones, propiedades y meta) y la app
+          vuelve a los datos de ejemplo. No se puede deshacer.
+        </Text>
+        <ConfirmDeleteButton
+          label="Restablecer datos"
+          onDelete={async () => {
+            await resetData();
+            setShowResetModal(false);
+          }}
+        />
+      </Sheet>
     </Screen>
   );
 }
@@ -166,5 +196,10 @@ const makeStyles = (c: ThemeColors) =>
       fontSize: font.caption,
       color: c.muted,
       marginTop: spacing.sm,
+    },
+    resetText: {
+      fontSize: font.body,
+      color: c.secondary,
+      lineHeight: 21,
     },
   });
