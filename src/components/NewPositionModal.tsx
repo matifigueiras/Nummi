@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text } from 'react-native';
 import { useApp } from '../store/AppContext';
+import { useThemedStyles } from '../store/ThemeContext';
+import { font, ThemeColors } from '../theme';
 import { Currency, Position, PositionKind } from '../types';
 import { ConfirmDeleteButton, Field, FormInput, parseAmount, SaveButton } from './form';
 import { SegmentedControl } from './SegmentedControl';
@@ -14,7 +17,8 @@ interface Props {
 }
 
 export function NewPositionModal({ visible, onClose, kind, position }: Props) {
-  const { addPosition, updatePosition, deletePosition } = useApp();
+  const { addPosition, updatePosition, deletePosition, livePrices } = useApp();
+  const styles = useThemedStyles(makeStyles);
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState<Currency>('USD');
@@ -139,6 +143,11 @@ export function NewPositionModal({ visible, onClose, kind, position }: Props) {
           keyboardType="decimal-pad"
           inputMode="decimal"
         />
+        {editing && livePrices.liveIds.includes(editing.id) && (
+          <Text style={styles.liveHint}>
+            Este precio se actualiza solo cada 5 minutos: lo que edites acá se va a sobrescribir.
+          </Text>
+        )}
       </Field>
 
       <SaveButton label={editing ? 'Guardar' : 'Agregar'} disabled={!valid} onPress={handleSave} />
@@ -147,3 +156,12 @@ export function NewPositionModal({ visible, onClose, kind, position }: Props) {
     </Sheet>
   );
 }
+
+const makeStyles = (c: ThemeColors) =>
+  StyleSheet.create({
+    liveHint: {
+      fontSize: font.caption + 1,
+      color: c.accent,
+      lineHeight: 16,
+    },
+  });

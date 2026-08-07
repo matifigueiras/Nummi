@@ -13,7 +13,10 @@ Objetivo de esta etapa: definir bien el diseño y el funcionamiento de la app. E
 - Framework: React Native + Expo
 - Orden de desarrollo: primero pensada y probada para navegador (Expo for Web), después adaptada/pulida para mobile (iOS/Android vía Expo)
 - Gráficos: librería de charts compatible con Expo/React Native (elegida: `react-native-svg` con componentes propios — más simple que una librería de charts completa)
-- Datos en vivo: dolarapi.com (cotización blue), auto-refresh cada 5 min y al volver a la pestaña/app
+- Datos en vivo (auto-refresh cada 5 min y al volver a la pestaña/app):
+  - dolarapi.com — cotización blue
+  - CoinGecko — precios de cripto en USD
+  - data912.com — acciones de EE.UU. (USD) y argentinas/CEDEARs (ARS)
 
 ## 3. Estructura de navegación (ya definida, no tocar)
 
@@ -47,6 +50,7 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 ### Patrimonio
 - Tracking de posiciones individuales:
   - Acciones y Cripto: ticker, cantidad, precio de compra, precio actual, **moneda de los precios** (CEDEARs/acciones locales cotizan en ARS)
+  - Precio actual en vivo cuando el ticker existe en la fuente (punto verde en la fila); si no, queda el valor cargado a mano. Los precios traídos se persisten, así sin conexión se ve el último conocido
   - Propiedades: alquiler mensual, gastos, valor estimado — **cada monto con su propia moneda** (caso típico: valor en USD, alquiler en ARS), yield anual calculado automáticamente convirtiendo todo a USD al blue
 
 ### Más

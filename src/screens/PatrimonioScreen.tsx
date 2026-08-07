@@ -9,10 +9,10 @@ import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Position, PositionKind, Property } from '../types';
-import { formatMoney, formatPercent, toUsd } from '../utils/format';
+import { formatMoney, formatPercent, formatRelativeTime, toUsd } from '../utils/format';
 
 export function PatrimonioScreen() {
-  const { accounts, movements, positions, properties, dolar } = useApp();
+  const { accounts, movements, positions, properties, dolar, livePrices } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [positionModal, setPositionModal] = useState<PositionKind | null>(null);
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
@@ -65,6 +65,9 @@ export function PatrimonioScreen() {
         <Text style={styles.totalEquivalent}>
           ≈ {formatMoney(totalUsd * dolar.rate.venta, 'ARS')} al blue
         </Text>
+        {livePrices.updatedAt && (
+          <LiveBadge text={`Precios en vivo · ${formatRelativeTime(livePrices.updatedAt)}`} />
+        )}
 
         <View style={styles.breakdown}>
           <BreakdownRow icon="credit-card" label="Efectivo" value={formatMoney(cashUsd, 'USD')} />
@@ -78,7 +81,14 @@ export function PatrimonioScreen() {
         {stocks.length === 0 ? (
           <Text style={styles.empty}>Sin posiciones todavía.</Text>
         ) : (
-          stocks.map((p) => <PositionRow key={p.id} position={p} onPress={setEditingPosition} />)
+          stocks.map((p) => (
+            <PositionRow
+              key={p.id}
+              position={p}
+              live={livePrices.liveIds.includes(p.id)}
+              onPress={setEditingPosition}
+            />
+          ))
         )}
       </Card>
 
@@ -87,7 +97,14 @@ export function PatrimonioScreen() {
         {crypto.length === 0 ? (
           <Text style={styles.empty}>Sin posiciones todavía.</Text>
         ) : (
-          crypto.map((p) => <PositionRow key={p.id} position={p} onPress={setEditingPosition} />)
+          crypto.map((p) => (
+            <PositionRow
+              key={p.id}
+              position={p}
+              live={livePrices.liveIds.includes(p.id)}
+              onPress={setEditingPosition}
+            />
+          ))
         )}
       </Card>
 
@@ -154,11 +171,23 @@ function BreakdownRow({
   );
 }
 
+function LiveBadge({ text }: { text: string }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.liveRow}>
+      <View style={styles.liveDot} />
+      <Text style={styles.liveText}>{text}</Text>
+    </View>
+  );
+}
+
 function PositionRow({
   position,
+  live,
   onPress,
 }: {
   position: Position;
+  live: boolean;
   onPress: (position: Position) => void;
 }) {
   const { colors } = useTheme();
@@ -173,10 +202,13 @@ function PositionRow({
       </View>
       <View style={styles.rowInfo}>
         <Text style={styles.rowTitle}>{position.name}</Text>
-        <Text style={styles.rowMeta}>
-          {position.quantity} × {formatMoney(position.currentPrice, position.currency)} · compra{' '}
-          {formatMoney(position.buyPrice, position.currency)}
-        </Text>
+        <View style={styles.rowMetaLine}>
+          {live && <View style={styles.liveDot} />}
+          <Text style={styles.rowMeta}>
+            {position.quantity} × {formatMoney(position.currentPrice, position.currency)} · compra{' '}
+            {formatMoney(position.buyPrice, position.currency)}
+          </Text>
+        </View>
       </View>
       <View style={styles.rowRight}>
         <Text style={styles.rowValue}>{formatMoney(value, position.currency)}</Text>
@@ -263,6 +295,28 @@ const makeStyles = (c: ThemeColors) =>
       fontSize: font.label,
       color: c.muted,
       marginTop: 4,
+    },
+    liveRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: spacing.sm,
+    },
+    liveDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: c.accent,
+    },
+    liveText: {
+      fontSize: font.caption,
+      fontWeight: '600',
+      color: c.accent,
+    },
+    rowMetaLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
     },
     breakdown: {
       marginTop: spacing.lg,

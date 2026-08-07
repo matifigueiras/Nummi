@@ -1,7 +1,26 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { AppState as RNAppState } from 'react-native';
 import { NewTransfer, repository } from '../data/repository';
 import { DolarBlue, useDolarBlue } from '../services/dolar';
+import { fetchLivePrices } from '../services/prices';
 import { Account, Movement, Position, Property, SavingsGoal } from '../types';
+
+const PRICES_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+export interface LivePricesState {
+  /** Momento de la última actualización exitosa */
+  updatedAt: Date | null;
+  /** Ids de posiciones cuyo precio viene de una fuente en vivo */
+  liveIds: string[];
+}
 
 interface AppState {
   loading: boolean;
@@ -11,6 +30,7 @@ interface AppState {
   properties: Property[];
   savingsGoal: SavingsGoal;
   dolar: DolarBlue;
+  livePrices: LivePricesState;
   addMovement: (movement: Omit<Movement, 'id'>) => Promise<void>;
   updateMovement: (movement: Movement) => Promise<void>;
   deleteMovement: (id: string) => Promise<void>;
@@ -35,7 +55,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [savingsGoal, setSavingsGoal] = useState<SavingsGoal>({ currency: 'ARS', amount: 0 });
+  const [livePrices, setLivePrices] = useState<LivePricesState>({ updatedAt: null, liveIds: [] });
   const dolar = useDolarBlue();
+
+  // Ref para que el ciclo de precios lea siempre las posiciones actuales sin
+  // re-suscribir el intervalo en cada cambio.
+  const positionsRef = useRef<Position[]>([]);
+
+  positionsRef.current = positions;
 
   const loadAll = useCallback(async () => {
     const [acc, movs, pos, props, goal] = await Promise.all([
@@ -48,13 +75,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAccounts(acc);
     setMovements(movs);
     setPositions(pos);
+    // El ref se puebla acá mismo porque refreshPrices puede correr antes del
+    // próximo render (ej: apenas termina la carga inicial)
+    positionsRef.current = pos;
     setProperties(props);
     setSavingsGoal(goal);
   }, []);
 
+  const refreshPrices = useCallback(async () => {
+    const positions = positionsRef.current;
+    if (positions.length === 0) return;
+    let prices: Map<string, number>;
+    try {
+      prices = await fetchLivePrices(positions);
+    } catch {
+      return;
+    }
+    if (prices.size === 0) return;
+    let changed = false;
+    for (const position of positions) {
+      const price = prices.get(position.id);
+      if (price !== undefined && price !== position.currentPrice) {
+        await repository.updatePosition({ ...position, currentPrice: price });
+        changed = true;
+      }
+    }
+    if (changed) setPositions(await repository.getPositions());
+    setLivePrices({ updatedAt: new Date(), liveIds: [...prices.keys()] });
+  }, []);
+
   useEffect(() => {
-    loadAll().then(() => setLoading(false));
-  }, [loadAll]);
+    loadAll().then(() => {
+      setLoading(false);
+      refreshPrices();
+    });
+    const interval = setInterval(refreshPrices, PRICES_REFRESH_INTERVAL_MS);
+    const sub = RNAppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshPrices();
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, [loadAll, refreshPrices]);
 
   // Después de cada mutación se relee todo del repositorio: una sola fuente de
   // verdad y cero riesgo de que el estado local se desincronice.
@@ -142,6 +205,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       properties,
       savingsGoal,
       dolar,
+      livePrices,
       addMovement,
       updateMovement,
       deleteMovement,
@@ -163,6 +227,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       properties,
       savingsGoal,
       dolar,
+      livePrices,
       addMovement,
       updateMovement,
       deleteMovement,
