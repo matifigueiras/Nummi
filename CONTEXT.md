@@ -1,0 +1,68 @@
+# App de Finanzas Personales — Spec para Claude Code
+
+## 1. Contexto y objetivo
+
+App de finanzas personales pensada para gestionar plata en Argentina (entorno dual ARS/USD, con dólar blue como tipo de cambio de referencia). Inspirada funcionalmente en Guitafix, Revolut y Mercado Pago.
+
+El proyecto viene de un workflow anterior en Google Sheets + Google Apps Script (`Code.gs`, con `leerMovimientos()` y lectores dinámicos sobre 4 pestañas: CAJA ARS, CAJA USD, TOTALES, INVERSIONES). Esa dependencia se está dejando atrás: el objetivo es una app 100% autocontenida.
+
+Objetivo de esta etapa: definir bien el diseño y el funcionamiento de la app. El almacenamiento de datos queda para una etapa posterior — por ahora no es parte del alcance.
+
+## 2. Stack técnico
+
+- Framework: React Native + Expo
+- Orden de desarrollo: primero pensada y probada para navegador (Expo for Web), después adaptada/pulida para mobile (iOS/Android vía Expo)
+- Gráficos: librería de charts compatible con Expo/React Native (elegida: `react-native-svg` con componentes propios — más simple que una librería de charts completa)
+- Datos en vivo: dolarapi.com (cotización blue), auto-refresh cada 5 min y al volver a la pestaña/app
+
+## 3. Estructura de navegación (ya definida, no tocar)
+
+```
+Home · Cuentas · (●) FAB · Patrimonio · Más
+```
+
+## 4. Dirección de diseño
+
+- Diseño moderno, limpio y premium — que se sienta a la altura de las mejores apps de finanzas del mercado
+- Interfaz simple y elegante, sin recargar de elementos
+- Tarjetas con bordes redondeados
+- Botones grandes, fáciles de tocar
+- Iconos simples y consistentes (set único: Feather, vía `@expo/vector-icons`)
+- Buena separación visual entre secciones (espaciado generoso, jerarquía clara)
+
+## 5. Especificación por tab
+
+### Home
+- Navegador de mes (← →)
+- Saludo contextual
+- Cotización del dólar blue, inline y compacta
+- Grid 2×2 de stats: Ingresos / Gastos / Ahorro del mes / Meta de ahorro
+- Gráfico donut Ingresos vs. Gastos
+
+### Cuentas
+- Caja ARS y Caja USD fusionadas en un solo tab
+- Toggle ARS/USD
+
+### Patrimonio
+- Tracking de posiciones individuales:
+  - Acciones y Cripto: ticker, cantidad, precio de compra, precio actual
+  - Propiedades: alquiler mensual, gastos, valor estimado, yield anual calculado automáticamente
+
+### Más
+- (a definir en próximas iteraciones)
+
+## 6. Principios de trabajo
+
+- Simpleza ante todo: si hay dos formas de resolver algo funcionalmente, elegir la más simple
+- Primero web, después mobile: cada feature se arma y prueba en Expo for Web antes de portarse/ajustarse para iOS/Android
+- Iteración incremental: cambios chicos, con feedback inmediato, no reescrituras grandes
+- Lectura dinámica de datos: evitar rangos hardcodeados; escanear y filtrar nulls en vez de asumir estructuras fijas
+- No romper lo ya definido: navegación y estructura de tabs son decisiones cerradas, no se renegocian salvo pedido explícito
+
+## 7. Estado actual
+
+- Etapa 1 completa: app funcional con datos simulados en memoria (`src/data/mock.ts`)
+- Tema claro/oscuro/sistema: selector en "Más", paletas en `src/theme.ts`, contexto en `src/store/ThemeContext.tsx` (la elección vive en memoria hasta que exista almacenamiento)
+- Alta de patrimonio: botón "+" por sección en Patrimonio (acciones, cripto y propiedades) con formularios en sheet
+- Toda la app habla con la interfaz `DataRepository` (`src/data/repository.ts`) — para conectar una API/base de datos real alcanza con escribir otra implementación y cambiar un export
+- Almacenamiento persistente: pendiente, etapa aparte

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "nummi-scaffold",
-    "slug": "nummi-scaffold",
+    "name": "Nummi",
+    "slug": "nummi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
