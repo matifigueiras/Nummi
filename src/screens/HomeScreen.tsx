@@ -134,7 +134,7 @@ export function HomeScreen() {
           iconBg={colors.inkSoft}
           label="Meta de ahorro"
           value={formatMoneyCompact(savingsGoal.amount, savingsGoal.currency)}
-          sub={`${Math.round(goalPct)}% alcanzado · tocá para editar`}
+          sub={`${Math.round(goalPct)}% alcanzado`}
           onPress={() => setShowGoalModal(true)}
         >
           <View style={styles.progressTrack}>

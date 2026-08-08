@@ -57,6 +57,16 @@ export function monthKeyOf(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/**
+ * Acepta coma o punto como separador decimal ("15,5" / "0.048"); NaN si no
+ * parsea. El string vacío da NaN a propósito: "sin completar" no es "cero".
+ */
+export function parseAmount(raw: string): number {
+  const normalized = raw.trim().replace(',', '.');
+  if (normalized === '') return NaN;
+  return Number(normalized);
+}
+
 /** Convierte un monto a USD usando el blue (venta) como referencia */
 export function toUsd(amount: number, currency: Currency, ventaRate: number): number {
   return currency === 'USD' ? amount : amount / ventaRate;

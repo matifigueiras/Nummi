@@ -13,6 +13,12 @@ npm run web
 Abre en `http://localhost:8081`. Para mobile: `npm run ios` / `npm run android`,
 o `npm start` y escanear el QR con Expo Go.
 
+Tests de la lógica de cálculo (montos, conversiones, yield, fechas):
+
+```bash
+npm test
+```
+
 ## Estructura
 
 ```
@@ -26,6 +32,9 @@ src/
   store/AppContext.tsx Estado global de la app
   components/         UI reutilizable (Card, Donut, TabBar, modal FAB, …)
   screens/            Home · Cuentas · Patrimonio · Más
+  utils/
+    calc.ts           Cálculos puros (stats del mes, saldos, yield) + tests
+    format.ts         Formato de plata y fechas + tests
 ```
 
 Los datos viven en memoria: al recargar vuelven al mock. La persistencia real

@@ -5,6 +5,7 @@ import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { addDaysISO, formatDayLabel, todayISO } from '../utils/format';
 
+
 // Piezas compartidas por los formularios de los sheets (movimiento, posición,
 // propiedad): campo con etiqueta, inputs, chips y botón de guardar.
 
@@ -138,10 +139,9 @@ export function ConfirmDeleteButton({ label, onDelete }: { label: string; onDele
   );
 }
 
-/** Acepta coma o punto como separador decimal ("15,5" / "0.048"); NaN si no parsea */
-export function parseAmount(raw: string): number {
-  return Number(raw.trim().replace(',', '.'));
-}
+// parseAmount vive en utils/format para poder testearla sin montar componentes;
+// se reexporta acá porque los formularios ya importan de este módulo.
+export { parseAmount } from '../utils/format';
 
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({

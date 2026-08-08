@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 
@@ -25,6 +26,8 @@ interface Props {
 export function Sheet({ visible, onClose, title, children }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  // En iPhone con home indicator el sheet tiene que despegarse del borde
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
@@ -33,7 +36,7 @@ export function Sheet({ visible, onClose, title, children }: Props) {
         style={styles.sheetWrap}
         pointerEvents="box-none"
       >
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: spacing.xxl + insets.bottom }]}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <Pressable onPress={onClose} hitSlop={8} style={styles.closeButton}>
@@ -72,7 +75,6 @@ const makeStyles = (c: ThemeColors) =>
       borderTopRightRadius: radius.xl,
       paddingHorizontal: spacing.xl,
       paddingTop: spacing.xl,
-      paddingBottom: spacing.xxl,
       maxHeight: '88%',
     },
     header: {

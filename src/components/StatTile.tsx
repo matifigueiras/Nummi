@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useThemedStyles } from '../store/ThemeContext';
+import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, shadow, spacing, ThemeColors } from '../theme';
 
 interface Props {
@@ -17,10 +17,15 @@ interface Props {
 
 export function StatTile({ icon, iconColor, iconBg, label, value, sub, onPress, children }: Props) {
   const styles = useThemedStyles(makeStyles);
+  const { colors } = useTheme();
   return (
     <Pressable style={styles.tile} onPress={onPress} disabled={!onPress}>
-      <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-        <Feather name={icon} size={15} color={iconColor} />
+      <View style={styles.tileHeader}>
+        <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
+          <Feather name={icon} size={15} color={iconColor} />
+        </View>
+        {/* Lápiz: señala que el tile se puede tocar para editar */}
+        {onPress && <Feather name="edit-2" size={13} color={colors.muted} />}
       </View>
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
@@ -45,13 +50,18 @@ const makeStyles = (c: ThemeColors) =>
       gap: 3,
       ...shadow.card,
     },
+    tileHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
     iconWrap: {
       width: 30,
       height: 30,
       borderRadius: radius.sm,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: spacing.xs,
     },
     label: {
       fontSize: font.label,
