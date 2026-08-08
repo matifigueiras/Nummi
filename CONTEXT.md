@@ -43,8 +43,9 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Gráfico donut Ingresos vs. Gastos
 
 ### Cuentas
-- Caja ARS y Caja USD fusionadas en un solo tab
-- Toggle ARS/USD
+- Varias cuentas propias (banco, Mercado Pago, efectivo, dólares), con alta/edición/borrado
+- Selector horizontal de cuentas; los movimientos se ligan a una cuenta, no a una moneda
+- Total por moneda cuando hay más de una cuenta de la misma
 - Navegador de mes (← →) como en Home: saldo, widgets y lista responden todos al mismo mes
 - Saldo mostrado al cierre del mes elegido (en el mes en curso = saldo de hoy)
 - Widgets del mes: resumen Ingresos/Gastos/Balance y gastos por categoría (barras)
@@ -56,7 +57,11 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
   - Propiedades: alquiler mensual, gastos, valor estimado — **cada monto con su propia moneda** (caso típico: valor en USD, alquiler en ARS), yield anual calculado automáticamente convirtiendo todo a USD al blue
 
 ### Más
-- (a definir en próximas iteraciones)
+- Apariencia (claro/oscuro/sistema), meta de ahorro y restablecer datos
+- **Movimientos fijos**: sueldo, alquiler, suscripciones. Se definen una vez y la app los
+  registra sola cuando llega el día del mes; nunca se duplican, no se adelantan a la fecha,
+  y si se borra el generado no vuelve a aparecer ese mes. Se pueden pausar sin perderlos
+- Resto (categorías propias, exportar, backend real): a definir en próximas iteraciones
 
 ## 6. Principios de trabajo
 

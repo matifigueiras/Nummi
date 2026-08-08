@@ -1,5 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Account, Currency, Movement, Position, Property, SavingsGoal } from '../types';
+import {
+  Account,
+  Movement,
+  Position,
+  Property,
+  RecurringMovement,
+  SavingsGoal,
+} from '../types';
 import {
   mockAccounts,
   mockMovements,
@@ -47,6 +54,13 @@ export interface DataRepository {
   addProperty(property: Omit<Property, 'id'>): Promise<Property>;
   updateProperty(property: Property): Promise<Property>;
   deleteProperty(id: string): Promise<void>;
+  getRecurrings(): Promise<RecurringMovement[]>;
+  addRecurring(recurring: Omit<RecurringMovement, 'id'>): Promise<RecurringMovement>;
+  updateRecurring(recurring: RecurringMovement): Promise<RecurringMovement>;
+  deleteRecurring(id: string): Promise<void>;
+  /** Meses ya procesados por cada fijo, para no regenerar lo que se borró */
+  getAppliedMonths(): Promise<Record<string, string[]>>;
+  markRecurringApplied(recurringId: string, monthKey: string): Promise<void>;
   getSavingsGoal(): Promise<SavingsGoal>;
   setSavingsGoal(goal: SavingsGoal): Promise<SavingsGoal>;
   /** Borra todo y vuelve a los datos de ejemplo */
@@ -54,8 +68,11 @@ export interface DataRepository {
 }
 
 interface StoredData {
-  version: 2;
+  version: 3;
   accounts: Account[];
+  recurrings: RecurringMovement[];
+  /** recurringId -> meses "yyyy-mm" ya generados */
+  appliedMonths: Record<string, string[]>;
   movements: Movement[];
   positions: Position[];
   properties: Property[];
@@ -66,8 +83,10 @@ const STORAGE_KEY = 'nummi:data:v1';
 
 function seed(): StoredData {
   return {
-    version: 2,
+    version: 3,
     accounts: [...mockAccounts],
+    recurrings: [],
+    appliedMonths: {},
     movements: [...mockMovements],
     positions: [...mockPositions],
     properties: [...mockProperties],
@@ -88,8 +107,10 @@ function migrateV1toV2(data: any): StoredData {
     accountId: m.accountId ?? byCurrency[m.currency] ?? 'caja-ars',
   }));
   return {
-    version: 2,
+    version: 3,
     accounts,
+    recurrings: [],
+    appliedMonths: {},
     movements,
     positions: data.positions ?? [...mockPositions],
     properties: data.properties ?? [...mockProperties],
@@ -111,9 +132,21 @@ class LocalStorageRepository implements DataRepository {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed?.version === 2) {
+        if (parsed?.version === 3) {
           this.state = parsed as StoredData;
           return this.state;
+        }
+        // v2 no tenía movimientos fijos: se agregan vacíos
+        if (parsed?.version === 2) {
+          const migrated: StoredData = {
+            ...(parsed as StoredData),
+            version: 3,
+            recurrings: [],
+            appliedMonths: {},
+          };
+          this.state = migrated;
+          await this.persist();
+          return migrated;
         }
         if (parsed?.version === 1) {
           this.state = migrateV1toV2(parsed);
@@ -269,6 +302,46 @@ class LocalStorageRepository implements DataRepository {
     const state = await this.load();
     state.properties = state.properties.filter((p) => p.id !== id);
     await this.persist();
+  }
+
+  async getRecurrings(): Promise<RecurringMovement[]> {
+    return [...(await this.load()).recurrings];
+  }
+
+  async addRecurring(recurring: Omit<RecurringMovement, 'id'>): Promise<RecurringMovement> {
+    const state = await this.load();
+    const created: RecurringMovement = { ...recurring, id: newId('f') };
+    state.recurrings.push(created);
+    await this.persist();
+    return created;
+  }
+
+  async updateRecurring(recurring: RecurringMovement): Promise<RecurringMovement> {
+    const state = await this.load();
+    state.recurrings = state.recurrings.map((r) => (r.id === recurring.id ? recurring : r));
+    await this.persist();
+    return recurring;
+  }
+
+  async deleteRecurring(id: string): Promise<void> {
+    const state = await this.load();
+    state.recurrings = state.recurrings.filter((r) => r.id !== id);
+    delete state.appliedMonths[id];
+    // Los movimientos ya generados quedan: son plata que efectivamente se movió
+    await this.persist();
+  }
+
+  async getAppliedMonths(): Promise<Record<string, string[]>> {
+    return { ...(await this.load()).appliedMonths };
+  }
+
+  async markRecurringApplied(recurringId: string, monthKey: string): Promise<void> {
+    const state = await this.load();
+    const months = state.appliedMonths[recurringId] ?? [];
+    if (!months.includes(monthKey)) {
+      state.appliedMonths[recurringId] = [...months, monthKey];
+      await this.persist();
+    }
   }
 
   async getSavingsGoal(): Promise<SavingsGoal> {

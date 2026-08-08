@@ -11,7 +11,9 @@ import { AppState as RNAppState } from 'react-native';
 import { NewTransfer, repository } from '../data/repository';
 import { DolarBlue, useDolarBlue } from '../services/dolar';
 import { fetchLivePrices } from '../services/prices';
-import { Account, Movement, Position, Property, SavingsGoal } from '../types';
+import { Account, Movement, Position, Property, RecurringMovement, SavingsGoal } from '../types';
+import { pendingRecurrings, toMovement } from '../utils/recurring';
+import { monthKeyOf } from '../utils/format';
 
 const PRICES_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -29,6 +31,7 @@ interface AppState {
   positions: Position[];
   properties: Property[];
   savingsGoal: SavingsGoal;
+  recurrings: RecurringMovement[];
   dolar: DolarBlue;
   livePrices: LivePricesState;
   addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
@@ -44,6 +47,9 @@ interface AppState {
   addProperty: (property: Omit<Property, 'id'>) => Promise<void>;
   updateProperty: (property: Property) => Promise<void>;
   deleteProperty: (id: string) => Promise<void>;
+  addRecurring: (recurring: Omit<RecurringMovement, 'id'>) => Promise<void>;
+  updateRecurring: (recurring: RecurringMovement) => Promise<void>;
+  deleteRecurring: (id: string) => Promise<void>;
   updateSavingsGoal: (goal: SavingsGoal) => Promise<void>;
   /** Borra todo lo guardado y vuelve a los datos de ejemplo */
   resetData: () => Promise<void>;
@@ -58,6 +64,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [positions, setPositions] = useState<Position[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [savingsGoal, setSavingsGoal] = useState<SavingsGoal>({ currency: 'ARS', amount: 0 });
+  const [recurrings, setRecurrings] = useState<RecurringMovement[]>([]);
   const [livePrices, setLivePrices] = useState<LivePricesState>({ updatedAt: null, liveIds: [] });
   const dolar = useDolarBlue();
 
@@ -68,15 +75,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   positionsRef.current = positions;
 
   const loadAll = useCallback(async () => {
-    const [acc, movs, pos, props, goal] = await Promise.all([
+    const [acc, movs, pos, props, goal, recs] = await Promise.all([
       repository.getAccounts(),
       repository.getMovements(),
       repository.getPositions(),
       repository.getProperties(),
       repository.getSavingsGoal(),
+      repository.getRecurrings(),
     ]);
     setAccounts(acc);
     setMovements(movs);
+    setRecurrings(recs);
     setPositions(pos);
     // El ref se puebla acá mismo porque refreshPrices puede correr antes del
     // próximo render (ej: apenas termina la carga inicial)
@@ -107,9 +116,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setLivePrices({ updatedAt: new Date(), liveIds: [...prices.keys()] });
   }, []);
 
+  // Genera los movimientos fijos que ya vencieron este mes y todavía no están
+  const applyRecurrings = useCallback(async () => {
+    const [recs, movs, applied] = await Promise.all([
+      repository.getRecurrings(),
+      repository.getMovements(),
+      repository.getAppliedMonths(),
+    ]);
+    const pending = pendingRecurrings(recs, movs, new Date(), applied);
+    if (pending.length === 0) return;
+    const key = monthKeyOf(new Date());
+    for (const item of pending) {
+      await repository.addMovement(toMovement(item));
+      await repository.markRecurringApplied(item.recurring.id, key);
+    }
+    setMovements(await repository.getMovements());
+  }, []);
+
   useEffect(() => {
     loadAll().then(() => {
       setLoading(false);
+      applyRecurrings();
       refreshPrices();
     });
     const interval = setInterval(refreshPrices, PRICES_REFRESH_INTERVAL_MS);
@@ -120,7 +147,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearInterval(interval);
       sub.remove();
     };
-  }, [loadAll, refreshPrices]);
+  }, [loadAll, refreshPrices, applyRecurrings]);
 
   // Después de cada mutación se relee todo del repositorio: una sola fuente de
   // verdad y cero riesgo de que el estado local se desincronice.
@@ -210,6 +237,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProperties(await repository.getProperties());
   }, []);
 
+  const addRecurring = useCallback(
+    async (recurring: Omit<RecurringMovement, 'id'>) => {
+      await repository.addRecurring(recurring);
+      setRecurrings(await repository.getRecurrings());
+      // Si el día del mes ya pasó, se carga en el acto
+      await applyRecurrings();
+    },
+    [applyRecurrings],
+  );
+
+  const updateRecurring = useCallback(async (recurring: RecurringMovement) => {
+    await repository.updateRecurring(recurring);
+    setRecurrings(await repository.getRecurrings());
+  }, []);
+
+  const deleteRecurring = useCallback(async (id: string) => {
+    await repository.deleteRecurring(id);
+    setRecurrings(await repository.getRecurrings());
+  }, []);
+
   const updateSavingsGoal = useCallback(async (goal: SavingsGoal) => {
     setSavingsGoal(await repository.setSavingsGoal(goal));
   }, []);
@@ -227,6 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       positions,
       properties,
       savingsGoal,
+      recurrings,
       dolar,
       livePrices,
       addAccount,
@@ -242,6 +290,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addProperty,
       updateProperty,
       deleteProperty,
+      addRecurring,
+      updateRecurring,
+      deleteRecurring,
       updateSavingsGoal,
       resetData,
     }),
@@ -252,6 +303,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       positions,
       properties,
       savingsGoal,
+      recurrings,
       dolar,
       livePrices,
       addAccount,
@@ -267,6 +319,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addProperty,
       updateProperty,
       deleteProperty,
+      addRecurring,
+      updateRecurring,
+      deleteRecurring,
       updateSavingsGoal,
       resetData,
     ],

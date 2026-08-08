@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
 import { ConfirmDeleteButton } from '../components/form';
+import { RecurringList } from '../components/RecurringList';
 import { SavingsGoalModal } from '../components/SavingsGoalModal';
 import { Screen } from '../components/Screen';
 import { SegmentedControl } from '../components/SegmentedControl';
@@ -52,6 +53,8 @@ export function MasScreen() {
           onChange={setMode}
         />
       </Card>
+
+      <RecurringList />
 
       <Card style={styles.listCard}>
         <Pressable style={styles.item} onPress={() => setShowGoalModal(true)}>

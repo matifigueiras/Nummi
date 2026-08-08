@@ -15,6 +15,8 @@ export interface Movement {
   currency: Currency;
   /** Siempre positivo; el signo lo da `type` */
   amount: number;
+  /** Si nació de un movimiento fijo, cuál (evita generarlo dos veces) */
+  recurringId?: string;
   /**
    * Si está presente, este movimiento es una pata de una transferencia entre
    * cajas (ej: compra de USD = gasto ARS + ingreso USD con el mismo id).
@@ -62,6 +64,25 @@ export interface Property {
   /** Valor estimado de la propiedad */
   estimatedValue: number;
   valueCurrency: Currency;
+}
+
+/**
+ * Movimiento que se repite todos los meses (sueldo, alquiler, suscripciones).
+ * La app lo carga sola cuando llega el día, así no hay que registrarlo a mano
+ * mes a mes.
+ */
+export interface RecurringMovement {
+  id: string;
+  description: string;
+  category: string;
+  type: MovementType;
+  accountId: string;
+  currency: Currency;
+  amount: number;
+  /** Día del mes en que ocurre (1-31; se recorta al último día si el mes es más corto) */
+  dayOfMonth: number;
+  /** Pausado: deja de generar movimientos sin perder la definición */
+  active: boolean;
 }
 
 export interface SavingsGoal {
