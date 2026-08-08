@@ -10,6 +10,7 @@ import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
+import { accountBalance, expensesByCategory, monthStats } from '../utils/calc';
 import { formatMoney, formatMonth, formatSigned, monthKey, monthKeyOf } from '../utils/format';
 
 const MAX_CATEGORIES = 5;
@@ -30,13 +31,10 @@ export function CuentasScreen() {
     [movements, currency],
   );
 
-  const balance = useMemo(() => {
-    const net = accountMovements.reduce(
-      (sum, m) => sum + (m.type === 'ingreso' ? m.amount : -m.amount),
-      0,
-    );
-    return (account?.initialBalance ?? 0) + net;
-  }, [accountMovements, account]);
+  const balance = useMemo(
+    () => (account ? accountBalance(account, movements) : 0),
+    [account, movements],
+  );
 
   // Equivalente en la otra moneda, al blue (venta como referencia)
   const equivalent =
@@ -44,34 +42,18 @@ export function CuentasScreen() {
       ? formatMoney(balance / dolar.rate.venta, 'USD')
       : formatMoney(balance * dolar.rate.venta, 'ARS');
 
-  // Métricas del mes en curso para esta caja
+  // Métricas del mes en curso para esta caja. Los montos ya están en la moneda
+  // de la caja, así que la conversión al blue no aplica (rate = 1).
   const currentKey = monthKeyOf(new Date());
-  const thisMonth = useMemo(
-    () => accountMovements.filter((m) => monthKey(m.date) === currentKey),
+  const { income: monthIncome, expense: monthExpense } = useMemo(
+    () => monthStats(accountMovements, currentKey, 1),
     [accountMovements, currentKey],
   );
 
-  // Las transferencias entre cajas no cuentan como ingresos/gastos del mes
-  const monthIncome = thisMonth
-    .filter((m) => m.type === 'ingreso' && !m.transferId)
-    .reduce((sum, m) => sum + m.amount, 0);
-  const monthExpense = thisMonth
-    .filter((m) => m.type === 'gasto' && !m.transferId)
-    .reduce((sum, m) => sum + m.amount, 0);
-
-  // Gastos del mes agrupados por categoría, de mayor a menor
-  const categories = useMemo(() => {
-    const byCategory = new Map<string, number>();
-    for (const m of thisMonth) {
-      if (m.type !== 'gasto' || m.transferId) continue;
-      byCategory.set(m.category, (byCategory.get(m.category) ?? 0) + m.amount);
-    }
-    const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
-    const top = sorted.slice(0, MAX_CATEGORIES);
-    const rest = sorted.slice(MAX_CATEGORIES).reduce((sum, [, amount]) => sum + amount, 0);
-    if (rest > 0) top.push(['Otras', rest]);
-    return top;
-  }, [thisMonth]);
+  const categories = useMemo(
+    () => expensesByCategory(accountMovements, currentKey, MAX_CATEGORIES),
+    [accountMovements, currentKey],
+  );
 
   // Agrupar por mes para los separadores de la lista
   const grouped = useMemo(() => {
@@ -139,13 +121,13 @@ export function CuentasScreen() {
         <Card>
           <Text style={styles.widgetTitle}>Gastos por categoría</Text>
           <View style={styles.categoryList}>
-            {categories.map(([category, amount]) => (
+            {categories.map((item) => (
               <CategoryBar
-                key={category}
-                category={category}
-                amount={amount}
+                key={item.category}
+                category={item.category}
+                amount={item.amount}
                 currency={currency}
-                maxAmount={categories[0][1]}
+                maxAmount={categories[0].amount}
               />
             ))}
           </View>

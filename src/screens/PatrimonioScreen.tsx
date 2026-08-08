@@ -9,6 +9,7 @@ import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Position, PositionKind, Property } from '../types';
+import { accountBalance, positionPnlPct, positionValue, propertyYieldPct } from '../utils/calc';
 import { formatMoney, formatPercent, formatRelativeTime, toUsd } from '../utils/format';
 
 export function PatrimonioScreen() {
@@ -20,22 +21,20 @@ export function PatrimonioScreen() {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   // Todo el patrimonio se consolida en USD (referencia: blue venta).
-  const cashUsd = useMemo(() => {
-    let totalUsd = 0;
-    for (const account of accounts) {
-      const net = movements
-        .filter((m) => m.currency === account.currency)
-        .reduce((sum, m) => sum + (m.type === 'ingreso' ? m.amount : -m.amount), 0);
-      const balance = account.initialBalance + net;
-      totalUsd += account.currency === 'USD' ? balance : balance / dolar.rate.venta;
-    }
-    return totalUsd;
-  }, [accounts, movements, dolar.rate.venta]);
+  const cashUsd = useMemo(
+    () =>
+      accounts.reduce(
+        (sum, account) =>
+          sum + toUsd(accountBalance(account, movements), account.currency, dolar.rate.venta),
+        0,
+      ),
+    [accounts, movements, dolar.rate.venta],
+  );
 
   const investmentsUsd = useMemo(
     () =>
       positions.reduce(
-        (sum, p) => sum + toUsd(p.quantity * p.currentPrice, p.currency, dolar.rate.venta),
+        (sum, p) => sum + toUsd(positionValue(p), p.currency, dolar.rate.venta),
         0,
       ),
     [positions, dolar.rate.venta],
@@ -192,8 +191,8 @@ function PositionRow({
 }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const value = position.quantity * position.currentPrice;
-  const pnlPct = ((position.currentPrice - position.buyPrice) / position.buyPrice) * 100;
+  const value = positionValue(position);
+  const pnlPct = positionPnlPct(position);
   const gain = pnlPct >= 0;
   return (
     <Pressable style={styles.row} onPress={() => onPress(position)}>
@@ -239,12 +238,8 @@ function PropertyRow({
   const { colors } = useTheme();
   const { dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
-  // Todo a USD para que el yield tenga sentido aunque las monedas estén mezcladas
-  const netMonthlyUsd =
-    toUsd(property.monthlyRent, property.rentCurrency, dolar.rate.venta) -
-    toUsd(property.monthlyExpenses, property.expensesCurrency, dolar.rate.venta);
-  const valueUsd = toUsd(property.estimatedValue, property.valueCurrency, dolar.rate.venta);
-  const yieldPct = (netMonthlyUsd * 12 * 100) / valueUsd;
+  // El yield convierte todo a USD, porque las monedas pueden estar mezcladas
+  const yieldPct = propertyYieldPct(property, dolar.rate.venta);
   return (
     <Pressable style={styles.row} onPress={() => onPress(property)}>
       <View style={[styles.tickerBadge, { backgroundColor: colors.accentSoft }]}>

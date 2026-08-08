@@ -5,18 +5,21 @@ import { Card } from '../components/Card';
 import { Donut } from '../components/Donut';
 import { MonthNav } from '../components/MonthNav';
 import { SavingsGoalModal } from '../components/SavingsGoalModal';
+import { SavingsTrend } from '../components/SavingsTrend';
 import { Screen } from '../components/Screen';
 import { StatTile } from '../components/StatTile';
 import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
+import { monthStats, savingsByMonth } from '../utils/calc';
 import {
   formatMoney,
   formatMoneyCompact,
   formatRelativeTime,
-  monthKey,
   monthKeyOf,
 } from '../utils/format';
+
+const TREND_MONTHS = 6;
 
 // Nombre mock — cuando haya perfil de usuario real sale de ahí.
 const USER_NAME = 'Mati';
@@ -43,21 +46,15 @@ export function HomeScreen() {
 
   // Consolidado en ARS: los movimientos en USD se convierten al blue (venta).
   // Las transferencias entre cajas no son ingresos ni gastos reales.
-  const { income, expense } = useMemo(() => {
-    const key = monthKeyOf(month);
-    let income = 0;
-    let expense = 0;
-    for (const mov of movements) {
-      if (mov.transferId) continue;
-      if (monthKey(mov.date) !== key) continue;
-      const inArs = mov.currency === 'USD' ? mov.amount * dolar.rate.venta : mov.amount;
-      if (mov.type === 'ingreso') income += inArs;
-      else expense += inArs;
-    }
-    return { income, expense };
-  }, [movements, month, dolar.rate.venta]);
+  const { income, expense, savings } = useMemo(
+    () => monthStats(movements, monthKeyOf(month), dolar.rate.venta),
+    [movements, month, dolar.rate.venta],
+  );
 
-  const savings = income - expense;
+  const trend = useMemo(
+    () => savingsByMonth(movements, month, TREND_MONTHS, dolar.rate.venta),
+    [movements, month, dolar.rate.venta],
+  );
   // Porcentaje real (puede superar 100%); la barra visual se recorta a 100%
   const goalPct = savingsGoal.amount > 0 ? Math.max(0, (savings / savingsGoal.amount) * 100) : 0;
   const goalBarProgress = Math.min(1, goalPct / 100);
@@ -149,6 +146,11 @@ export function HomeScreen() {
       <Card>
         <Text style={styles.cardTitle}>Ingresos vs. Gastos</Text>
         <Donut income={income} expense={expense} />
+      </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>Ahorro por mes</Text>
+        <SavingsTrend key={monthKeyOf(month)} data={trend} />
       </Card>
 
       <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />
