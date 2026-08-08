@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
+import { MonthNav } from '../components/MonthNav';
 import { MovementRow } from '../components/MovementRow';
 import { NewMovementModal } from '../components/NewMovementModal';
 import { Screen } from '../components/Screen';
@@ -10,30 +11,45 @@ import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
-import { accountBalance, expensesByCategory, monthStats } from '../utils/calc';
+import { accountBalanceAt, expensesByCategory, monthStats } from '../utils/calc';
 import { formatMoney, formatMonth, formatSigned, monthKey, monthKeyOf } from '../utils/format';
 
 const MAX_CATEGORIES = 5;
+
+function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
 
 export function CuentasScreen() {
   const { accounts, movements, dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [currency, setCurrency] = useState<Currency>('ARS');
+  const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
 
   const account = accounts.find((a) => a.currency === currency);
+  const monthKeyValue = monthKeyOf(month);
+  const isCurrentMonth = monthKeyValue === monthKeyOf(new Date());
 
   const accountMovements = useMemo(
-    () =>
-      movements
-        .filter((m) => m.currency === currency)
-        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    () => movements.filter((m) => m.currency === currency),
     [movements, currency],
   );
 
+  // Movimientos del mes elegido, del más nuevo al más viejo
+  const monthMovements = useMemo(
+    () =>
+      accountMovements
+        .filter((m) => monthKey(m.date) === monthKeyValue)
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [accountMovements, monthKeyValue],
+  );
+
+  // El saldo es acumulado: se muestra al cierre del mes elegido (en el mes en
+  // curso coincide con el saldo de hoy).
   const balance = useMemo(
-    () => (account ? accountBalance(account, movements) : 0),
-    [account, movements],
+    () => (account ? accountBalanceAt(account, movements, monthKeyValue) : 0),
+    [account, movements, monthKeyValue],
   );
 
   // Equivalente en la otra moneda, al blue (venta como referencia)
@@ -42,34 +58,16 @@ export function CuentasScreen() {
       ? formatMoney(balance / dolar.rate.venta, 'USD')
       : formatMoney(balance * dolar.rate.venta, 'ARS');
 
-  // Métricas del mes en curso para esta caja. Los montos ya están en la moneda
-  // de la caja, así que la conversión al blue no aplica (rate = 1).
-  const currentKey = monthKeyOf(new Date());
+  // Los montos ya están en la moneda de la caja: no hay conversión (rate = 1)
   const { income: monthIncome, expense: monthExpense } = useMemo(
-    () => monthStats(accountMovements, currentKey, 1),
-    [accountMovements, currentKey],
+    () => monthStats(accountMovements, monthKeyValue, 1),
+    [accountMovements, monthKeyValue],
   );
 
   const categories = useMemo(
-    () => expensesByCategory(accountMovements, currentKey, MAX_CATEGORIES),
-    [accountMovements, currentKey],
+    () => expensesByCategory(accountMovements, monthKeyValue, MAX_CATEGORIES),
+    [accountMovements, monthKeyValue],
   );
-
-  // Agrupar por mes para los separadores de la lista
-  const grouped = useMemo(() => {
-    const groups: { key: string; title: string; items: Movement[] }[] = [];
-    for (const mov of accountMovements) {
-      const key = monthKey(mov.date);
-      let group = groups[groups.length - 1];
-      if (!group || group.key !== key) {
-        const [y, m] = key.split('-').map(Number);
-        group = { key, title: formatMonth(new Date(y, m - 1, 1)), items: [] };
-        groups.push(group);
-      }
-      group.items.push(mov);
-    }
-    return groups;
-  }, [accountMovements]);
 
   return (
     <Screen>
@@ -84,14 +82,27 @@ export function CuentasScreen() {
         onChange={setCurrency}
       />
 
+      <MonthNav
+        month={month}
+        onPrev={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+        onNext={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+        nextDisabled={isCurrentMonth}
+      />
+
       <Card>
-        <Text style={styles.balanceLabel}>Saldo disponible</Text>
+        <Text style={styles.balanceLabel}>
+          {isCurrentMonth
+            ? 'Saldo disponible'
+            : `Saldo al cierre de ${formatMonth(month).toLowerCase()}`}
+        </Text>
         <Text style={styles.balanceValue}>{formatMoney(balance, currency)}</Text>
-        <Text style={styles.balanceEquivalent}>≈ {equivalent} al blue</Text>
+        <Text style={styles.balanceEquivalent}>
+          ≈ {equivalent} al blue{isCurrentMonth ? '' : ' de hoy'}
+        </Text>
       </Card>
 
       <Card>
-        <Text style={styles.widgetTitle}>Este mes · {formatMonth(new Date())}</Text>
+        <Text style={styles.widgetTitle}>Resumen del mes</Text>
         <View style={styles.monthRow}>
           <MonthStat
             icon="arrow-down-left"
@@ -136,16 +147,16 @@ export function CuentasScreen() {
 
       <Card style={styles.listCard}>
         <Text style={styles.sectionTitle}>Movimientos</Text>
-        {grouped.length === 0 ? (
-          <Text style={styles.empty}>Todavía no hay movimientos en esta caja.</Text>
+        {monthMovements.length === 0 ? (
+          <View style={styles.empty}>
+            <Feather name="inbox" size={22} color={styles.emptyIcon.color} />
+            <Text style={styles.emptyText}>
+              No hay movimientos en {formatMonth(month).toLowerCase()} para esta caja.
+            </Text>
+          </View>
         ) : (
-          grouped.map((group) => (
-            <View key={group.key}>
-              <Text style={styles.monthHeader}>{group.title}</Text>
-              {group.items.map((mov) => (
-                <MovementRow key={mov.id} movement={mov} onPress={setEditingMovement} />
-              ))}
-            </View>
+          monthMovements.map((mov) => (
+            <MovementRow key={mov.id} movement={mov} onPress={setEditingMovement} />
           ))
         )}
       </Card>
@@ -324,18 +335,17 @@ const makeStyles = (c: ThemeColors) =>
       color: c.ink,
       marginBottom: spacing.xs,
     },
-    monthHeader: {
-      fontSize: font.caption,
-      fontWeight: '600',
-      color: c.muted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      marginTop: spacing.lg,
-      marginBottom: spacing.xs,
-    },
     empty: {
-      fontSize: font.body,
+      alignItems: 'center',
+      gap: spacing.sm,
+      paddingVertical: spacing.xl,
+    },
+    emptyIcon: {
       color: c.muted,
-      paddingVertical: spacing.lg,
+    },
+    emptyText: {
+      fontSize: font.label,
+      color: c.muted,
+      textAlign: 'center',
     },
   });

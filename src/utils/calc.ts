@@ -75,6 +75,19 @@ export function accountBalance(account: Account, movements: Movement[]): number 
   return account.initialBalance + net;
 }
 
+/**
+ * Saldo de una caja al cierre de un mes ("yyyy-mm"): saldo inicial + todos los
+ * movimientos hasta ese mes inclusive. Con el mes en curso da el saldo de hoy.
+ */
+export function accountBalanceAt(
+  account: Account,
+  movements: Movement[],
+  untilKey: string,
+): number {
+  const upToMonth = movements.filter((m) => monthKey(m.date) <= untilKey);
+  return accountBalance(account, upToMonth);
+}
+
 export interface CategoryTotal {
   category: string;
   amount: number;

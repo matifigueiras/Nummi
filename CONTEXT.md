@@ -45,7 +45,9 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 ### Cuentas
 - Caja ARS y Caja USD fusionadas en un solo tab
 - Toggle ARS/USD
-- Widgets del mes en curso: resumen Ingresos/Gastos/Balance y gastos por categoría (barras)
+- Navegador de mes (← →) como en Home: saldo, widgets y lista responden todos al mismo mes
+- Saldo mostrado al cierre del mes elegido (en el mes en curso = saldo de hoy)
+- Widgets del mes: resumen Ingresos/Gastos/Balance y gastos por categoría (barras)
 
 ### Patrimonio
 - Tracking de posiciones individuales:

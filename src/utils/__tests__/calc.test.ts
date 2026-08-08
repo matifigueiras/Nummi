@@ -1,6 +1,7 @@
 import { Account, Movement, Position, Property } from '../../types';
 import {
   accountBalance,
+  accountBalanceAt,
   expensesByCategory,
   monthStats,
   positionPnlPct,
@@ -123,6 +124,36 @@ describe('accountBalance', () => {
   it('incluye las transferencias', () => {
     const movements = [movement({ id: '1', type: 'gasto', amount: 400, transferId: 't1' })];
     expect(accountBalance(account, movements)).toBe(600);
+  });
+});
+
+describe('accountBalanceAt', () => {
+  const account: Account = {
+    id: 'caja-ars',
+    name: 'Caja ARS',
+    currency: 'ARS',
+    initialBalance: 1000,
+  };
+  const movements = [
+    movement({ id: '1', type: 'ingreso', amount: 500, date: '2026-06-10' }),
+    movement({ id: '2', type: 'ingreso', amount: 300, date: '2026-07-10' }),
+    movement({ id: '3', type: 'gasto', amount: 200, date: '2026-08-10' }),
+  ];
+
+  it('acumula solo hasta el mes pedido', () => {
+    expect(accountBalanceAt(account, movements, '2026-06')).toBe(1500);
+    expect(accountBalanceAt(account, movements, '2026-07')).toBe(1800);
+    expect(accountBalanceAt(account, movements, '2026-08')).toBe(1600);
+  });
+
+  it('devuelve el saldo inicial para un mes anterior a todo movimiento', () => {
+    expect(accountBalanceAt(account, movements, '2026-05')).toBe(1000);
+  });
+
+  it('coincide con el saldo total cuando el mes cubre todos los movimientos', () => {
+    expect(accountBalanceAt(account, movements, '2026-12')).toBe(
+      accountBalance(account, movements),
+    );
   });
 });
 
