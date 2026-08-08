@@ -8,6 +8,7 @@ import {
   positionValue,
   propertyYieldPct,
   savingsByMonth,
+  totalByCurrency,
 } from '../calc';
 
 // Tipo de cambio fijo para que los tests no dependan de la cotización real
@@ -19,6 +20,7 @@ function movement(over: Partial<Movement>): Movement {
     date: '2026-08-05',
     description: 'Test',
     category: 'Otros',
+    accountId: 'caja-ars',
     type: 'gasto',
     currency: 'ARS',
     amount: 1000,
@@ -112,18 +114,57 @@ describe('accountBalance', () => {
     expect(accountBalance(account, movements)).toBe(1300);
   });
 
-  it('solo toma los movimientos de la moneda de la caja', () => {
+  it('solo toma los movimientos de esa cuenta', () => {
     const movements = [
       movement({ id: '1', type: 'ingreso', amount: 500 }),
-      movement({ id: '2', type: 'ingreso', currency: 'USD', amount: 999 }),
+      movement({ id: '2', type: 'ingreso', accountId: 'caja-usd', currency: 'USD', amount: 999 }),
     ];
     expect(accountBalance(account, movements)).toBe(1500);
   });
 
-  // Las transferencias sí mueven plata de una caja a otra
+  // Lo que habilita tener varias cuentas: dos cajas en pesos no se mezclan
+  it('separa dos cuentas de la misma moneda', () => {
+    const mercadoPago: Account = {
+      id: 'mp',
+      name: 'Mercado Pago',
+      currency: 'ARS',
+      initialBalance: 200,
+    };
+    const movements = [
+      movement({ id: '1', type: 'ingreso', amount: 500 }),
+      movement({ id: '2', type: 'ingreso', accountId: 'mp', amount: 300 }),
+    ];
+    expect(accountBalance(account, movements)).toBe(1500);
+    expect(accountBalance(mercadoPago, movements)).toBe(500);
+  });
+
+  // Las transferencias sí mueven plata de una cuenta a otra
   it('incluye las transferencias', () => {
     const movements = [movement({ id: '1', type: 'gasto', amount: 400, transferId: 't1' })];
     expect(accountBalance(account, movements)).toBe(600);
+  });
+});
+
+describe('totalByCurrency', () => {
+  const banco: Account = { id: 'banco', name: 'Banco', currency: 'ARS', initialBalance: 1000 };
+  const mp: Account = { id: 'mp', name: 'Mercado Pago', currency: 'ARS', initialBalance: 500 };
+  const usd: Account = { id: 'usd', name: 'Dólares', currency: 'USD', initialBalance: 100 };
+  const accounts = [banco, mp, usd];
+
+  it('suma los saldos de todas las cuentas de esa moneda', () => {
+    const movements = [
+      movement({ id: '1', accountId: 'banco', type: 'ingreso', amount: 200 }),
+      movement({ id: '2', accountId: 'mp', type: 'gasto', amount: 100 }),
+    ];
+    expect(totalByCurrency(accounts, movements, 'ARS')).toBe(1600);
+  });
+
+  it('no mezcla monedas distintas', () => {
+    expect(totalByCurrency(accounts, [], 'USD')).toBe(100);
+  });
+
+  it('da cero si no hay cuentas de esa moneda', () => {
+    expect(totalByCurrency([usd], [], 'ARS')).toBe(0);
   });
 });
 

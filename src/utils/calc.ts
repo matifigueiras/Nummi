@@ -67,12 +67,23 @@ export function savingsByMonth(
   return result;
 }
 
-/** Saldo de una caja: saldo inicial + todos sus movimientos (transferencias incluidas) */
+/** Saldo de una cuenta: saldo inicial + sus movimientos (transferencias incluidas) */
 export function accountBalance(account: Account, movements: Movement[]): number {
   const net = movements
-    .filter((m) => m.currency === account.currency)
+    .filter((m) => m.accountId === account.id)
     .reduce((sum, m) => sum + (m.type === 'ingreso' ? m.amount : -m.amount), 0);
   return account.initialBalance + net;
+}
+
+/** Suma de los saldos de todas las cuentas de una moneda */
+export function totalByCurrency(
+  accounts: Account[],
+  movements: Movement[],
+  currency: Currency,
+): number {
+  return accounts
+    .filter((a) => a.currency === currency)
+    .reduce((sum, a) => sum + accountBalance(a, movements), 0);
 }
 
 /**

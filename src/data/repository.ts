@@ -18,8 +18,10 @@ import {
 
 export interface NewTransfer {
   date: string;
-  /** Caja de origen; el destino es la otra */
-  from: Currency;
+  /** Cuenta de origen */
+  fromAccountId: string;
+  /** Cuenta de destino (puede ser de otra moneda) */
+  toAccountId: string;
   amountFrom: number;
   amountTo: number;
   description?: string;
@@ -27,6 +29,10 @@ export interface NewTransfer {
 
 export interface DataRepository {
   getAccounts(): Promise<Account[]>;
+  addAccount(account: Omit<Account, 'id'>): Promise<Account>;
+  updateAccount(account: Account): Promise<Account>;
+  /** Elimina la cuenta y todos sus movimientos */
+  deleteAccount(id: string): Promise<void>;
   getMovements(): Promise<Movement[]>;
   addMovement(movement: Omit<Movement, 'id'>): Promise<Movement>;
   updateMovement(movement: Movement): Promise<Movement>;
@@ -48,7 +54,8 @@ export interface DataRepository {
 }
 
 interface StoredData {
-  version: 1;
+  version: 2;
+  accounts: Account[];
   movements: Movement[];
   positions: Position[];
   properties: Property[];
@@ -59,11 +66,34 @@ const STORAGE_KEY = 'nummi:data:v1';
 
 function seed(): StoredData {
   return {
-    version: 1,
+    version: 2,
+    accounts: [...mockAccounts],
     movements: [...mockMovements],
     positions: [...mockPositions],
     properties: [...mockProperties],
     savingsGoal: { ...mockSavingsGoal },
+  };
+}
+
+/**
+ * v1 no tenía cuentas propias: había exactamente una caja por moneda y los
+ * movimientos se ligaban a ella sólo por su `currency`. Se guardan las dos
+ * cajas y cada movimiento queda apuntando a la de su moneda.
+ */
+function migrateV1toV2(data: any): StoredData {
+  const accounts: Account[] = [...mockAccounts];
+  const byCurrency: Record<string, string> = { ARS: 'caja-ars', USD: 'caja-usd' };
+  const movements: Movement[] = (data.movements ?? []).map((m: Movement) => ({
+    ...m,
+    accountId: m.accountId ?? byCurrency[m.currency] ?? 'caja-ars',
+  }));
+  return {
+    version: 2,
+    accounts,
+    movements,
+    positions: data.positions ?? [...mockPositions],
+    properties: data.properties ?? [...mockProperties],
+    savingsGoal: data.savingsGoal ?? { ...mockSavingsGoal },
   };
 }
 
@@ -81,8 +111,13 @@ class LocalStorageRepository implements DataRepository {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed?.version === 1) {
+        if (parsed?.version === 2) {
           this.state = parsed as StoredData;
+          return this.state;
+        }
+        if (parsed?.version === 1) {
+          this.state = migrateV1toV2(parsed);
+          await this.persist();
           return this.state;
         }
       }
@@ -99,7 +134,36 @@ class LocalStorageRepository implements DataRepository {
   }
 
   async getAccounts(): Promise<Account[]> {
-    return [...mockAccounts];
+    return [...(await this.load()).accounts];
+  }
+
+  async addAccount(account: Omit<Account, 'id'>): Promise<Account> {
+    const state = await this.load();
+    const created: Account = { ...account, id: newId('a') };
+    state.accounts.push(created);
+    await this.persist();
+    return created;
+  }
+
+  async updateAccount(account: Account): Promise<Account> {
+    const state = await this.load();
+    state.accounts = state.accounts.map((a) => (a.id === account.id ? account : a));
+    await this.persist();
+    return account;
+  }
+
+  async deleteAccount(id: string): Promise<void> {
+    const state = await this.load();
+    // Un movimiento sin cuenta no tendría sentido: se van con ella. Si alguno
+    // era pata de una transferencia, se elimina también la otra pata.
+    const orphanTransfers = new Set(
+      state.movements.filter((m) => m.accountId === id && m.transferId).map((m) => m.transferId),
+    );
+    state.accounts = state.accounts.filter((a) => a.id !== id);
+    state.movements = state.movements.filter(
+      (m) => m.accountId !== id && !(m.transferId && orphanTransfers.has(m.transferId)),
+    );
+    await this.persist();
   }
 
   async getMovements(): Promise<Movement[]> {
@@ -132,21 +196,26 @@ class LocalStorageRepository implements DataRepository {
   }
 
   async addTransfer(transfer: NewTransfer): Promise<Movement[]> {
+    const state = await this.load();
+    const from = state.accounts.find((a) => a.id === transfer.fromAccountId);
+    const to = state.accounts.find((a) => a.id === transfer.toAccountId);
+    if (!from || !to) throw new Error('Cuenta de transferencia inexistente');
+
     const transferId = newId('t');
-    const to: Currency = transfer.from === 'ARS' ? 'USD' : 'ARS';
-    const description =
-      transfer.description?.trim() || (transfer.from === 'ARS' ? 'Compra USD' : 'Venta USD');
+    const description = transfer.description?.trim() || `${from.name} → ${to.name}`;
     const base = { date: transfer.date, description, category: 'Transferencia', transferId };
     const out = await this.addMovement({
       ...base,
       type: 'gasto',
-      currency: transfer.from,
+      accountId: from.id,
+      currency: from.currency,
       amount: transfer.amountFrom,
     });
     const inn = await this.addMovement({
       ...base,
       type: 'ingreso',
-      currency: to,
+      accountId: to.id,
+      currency: to.currency,
       amount: transfer.amountTo,
     });
     return [out, inn];

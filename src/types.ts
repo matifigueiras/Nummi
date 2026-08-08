@@ -9,6 +9,9 @@ export interface Movement {
   description: string;
   category: string;
   type: MovementType;
+  /** Cuenta a la que pertenece el movimiento */
+  accountId: string;
+  /** Redundante con la moneda de la cuenta, pero evita buscarla para formatear */
   currency: Currency;
   /** Siempre positivo; el signo lo da `type` */
   amount: number;
@@ -25,6 +28,7 @@ export interface Account {
   id: string;
   name: string;
   currency: Currency;
+  /** Saldo previo a los movimientos registrados en la app */
   initialBalance: number;
 }
 

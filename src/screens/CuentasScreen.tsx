@@ -1,17 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { AccountModal } from '../components/AccountModal';
+import { AccountPicker } from '../components/AccountPicker';
 import { Card } from '../components/Card';
 import { MonthNav } from '../components/MonthNav';
 import { MovementRow } from '../components/MovementRow';
 import { NewMovementModal } from '../components/NewMovementModal';
 import { Screen } from '../components/Screen';
-import { SegmentedControl } from '../components/SegmentedControl';
 import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
-import { accountBalanceAt, expensesByCategory, monthStats } from '../utils/calc';
+import { accountBalanceAt, expensesByCategory, monthStats, totalByCurrency } from '../utils/calc';
 import { formatMoney, formatMonth, formatSigned, monthKey, monthKeyOf } from '../utils/format';
 
 const MAX_CATEGORIES = 5;
@@ -23,17 +24,20 @@ function startOfMonth(date: Date): Date {
 export function CuentasScreen() {
   const { accounts, movements, dolar } = useApp();
   const styles = useThemedStyles(makeStyles);
-  const [currency, setCurrency] = useState<Currency>('ARS');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
+  const [accountModal, setAccountModal] = useState<'new' | 'edit' | null>(null);
 
-  const account = accounts.find((a) => a.currency === currency);
+  // Si la cuenta elegida se borró (o todavía no se eligió), cae en la primera
+  const account = accounts.find((a) => a.id === selectedId) ?? accounts[0] ?? null;
+  const currency: Currency = account?.currency ?? 'ARS';
   const monthKeyValue = monthKeyOf(month);
   const isCurrentMonth = monthKeyValue === monthKeyOf(new Date());
 
   const accountMovements = useMemo(
-    () => movements.filter((m) => m.currency === currency),
-    [movements, currency],
+    () => (account ? movements.filter((m) => m.accountId === account.id) : []),
+    [movements, account],
   );
 
   // Movimientos del mes elegido, del más nuevo al más viejo
@@ -69,17 +73,21 @@ export function CuentasScreen() {
     [accountMovements, monthKeyValue],
   );
 
+  const sameCurrencyCount = accounts.filter((a) => a.currency === currency).length;
+  const currencyTotal = useMemo(
+    () => totalByCurrency(accounts, movements, currency),
+    [accounts, movements, currency],
+  );
+
   return (
     <Screen>
       <Text style={styles.title}>Cuentas</Text>
 
-      <SegmentedControl
-        options={[
-          { value: 'ARS', label: 'Caja ARS' },
-          { value: 'USD', label: 'Caja USD' },
-        ]}
-        value={currency}
-        onChange={setCurrency}
+      <AccountPicker
+        accounts={accounts}
+        selectedId={account?.id ?? null}
+        onSelect={setSelectedId}
+        onAdd={() => setAccountModal('new')}
       />
 
       <MonthNav
@@ -90,15 +98,28 @@ export function CuentasScreen() {
       />
 
       <Card>
-        <Text style={styles.balanceLabel}>
-          {isCurrentMonth
-            ? 'Saldo disponible'
-            : `Saldo al cierre de ${formatMonth(month).toLowerCase()}`}
-        </Text>
+        <View style={styles.balanceHeader}>
+          <Text style={styles.balanceLabel}>
+            {isCurrentMonth
+              ? 'Saldo disponible'
+              : `Saldo al cierre de ${formatMonth(month).toLowerCase()}`}
+          </Text>
+          <Pressable onPress={() => setAccountModal('edit')} hitSlop={8}>
+            <Feather name="edit-2" size={14} color={styles.emptyIcon.color} />
+          </Pressable>
+        </View>
         <Text style={styles.balanceValue}>{formatMoney(balance, currency)}</Text>
         <Text style={styles.balanceEquivalent}>
           ≈ {equivalent} al blue{isCurrentMonth ? '' : ' de hoy'}
         </Text>
+        {/* Con varias cuentas de la misma moneda, el total ayuda a no perder
+            de vista cuánto hay en total en pesos (o en dólares) */}
+        {sameCurrencyCount > 1 && (
+          <Text style={styles.balanceTotal}>
+            Total en {currency === 'ARS' ? 'pesos' : 'dólares'}:{' '}
+            {formatMoney(currencyTotal, currency)}
+          </Text>
+        )}
       </Card>
 
       <Card>
@@ -151,7 +172,7 @@ export function CuentasScreen() {
           <View style={styles.empty}>
             <Feather name="inbox" size={22} color={styles.emptyIcon.color} />
             <Text style={styles.emptyText}>
-              No hay movimientos en {formatMonth(month).toLowerCase()} para esta caja.
+              No hay movimientos en {formatMonth(month).toLowerCase()} en esta cuenta.
             </Text>
           </View>
         ) : (
@@ -165,6 +186,13 @@ export function CuentasScreen() {
         visible={editingMovement !== null}
         onClose={() => setEditingMovement(null)}
         movement={editingMovement}
+      />
+
+      <AccountModal
+        visible={accountModal !== null}
+        onClose={() => setAccountModal(null)}
+        account={accountModal === 'edit' ? account : null}
+        accountCount={accounts.length}
       />
     </Screen>
   );
@@ -243,9 +271,22 @@ const makeStyles = (c: ThemeColors) =>
       color: c.ink,
       letterSpacing: -0.4,
     },
+    balanceHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
     balanceLabel: {
       fontSize: font.label,
       color: c.secondary,
+    },
+    balanceTotal: {
+      fontSize: font.label,
+      color: c.secondary,
+      marginTop: spacing.md,
+      paddingTop: spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: c.border,
     },
     balanceValue: {
       fontSize: 34,

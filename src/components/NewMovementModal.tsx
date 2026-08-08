@@ -3,8 +3,9 @@ import { StyleSheet, Text } from 'react-native';
 import { useApp } from '../store/AppContext';
 import { useThemedStyles } from '../store/ThemeContext';
 import { font, ThemeColors } from '../theme';
-import { Currency, Movement, MovementType } from '../types';
+import { Movement, MovementType } from '../types';
 import { formatMoney, todayISO } from '../utils/format';
+import { AccountPicker } from './AccountPicker';
 import {
   ChipGroup,
   ConfirmDeleteButton,
@@ -29,18 +30,20 @@ interface Props {
   onClose: () => void;
   /** Si viene, el modal edita ese movimiento en vez de crear uno nuevo */
   movement?: Movement | null;
+  /** Cuenta preseleccionada al crear */
+  defaultAccountId?: string;
 }
 
-export function NewMovementModal({ visible, onClose, movement }: Props) {
-  const { movements, addMovement, updateMovement, deleteMovement, addTransfer } = useApp();
+export function NewMovementModal({ visible, onClose, movement, defaultAccountId }: Props) {
+  const { accounts, movements, addMovement, updateMovement, deleteMovement, addTransfer } = useApp();
   const [uiType, setUiType] = useState<UiType>('gasto');
-  const [currency, setCurrency] = useState<Currency>('ARS');
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Comida');
   const [date, setDate] = useState(todayISO());
   // Transferencias
-  const [transferFrom, setTransferFrom] = useState<Currency>('ARS');
+  const [toAccountId, setToAccountId] = useState<string | null>(null);
   const [amountTo, setAmountTo] = useState('');
 
   const editing = movement ?? null;
@@ -51,30 +54,38 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
     if (!visible) return;
     if (editing) {
       setUiType(editing.type);
-      setCurrency(editing.currency);
+      setAccountId(editing.accountId);
       setAmount(String(editing.amount).replace('.', ','));
       setDescription(editing.description);
       setCategory(editing.category);
       setDate(editing.date);
     } else {
+      const first = defaultAccountId ?? accounts[0]?.id ?? null;
       setUiType('gasto');
-      setCurrency('ARS');
+      setAccountId(first);
       setAmount('');
       setDescription('');
       setCategory('Comida');
       setDate(todayISO());
-      setTransferFrom('ARS');
+      setToAccountId(accounts.find((a) => a.id !== first)?.id ?? null);
       setAmountTo('');
     }
-  }, [visible, editing]);
+  }, [visible, editing, defaultAccountId, accounts]);
 
   const isTransfer = uiType === 'transferencia';
   const parsedAmount = parseAmount(amount);
   const parsedAmountTo = parseAmount(amountTo);
 
+  const fromAccount = accounts.find((a) => a.id === accountId) ?? null;
+  const toAccount = accounts.find((a) => a.id === toAccountId) ?? null;
+  // Entre cuentas de la misma moneda el monto es uno solo
+  const sameCurrency = fromAccount && toAccount && fromAccount.currency === toAccount.currency;
+
   const valid = isTransfer
-    ? parsedAmount > 0 && parsedAmountTo > 0
-    : parsedAmount > 0 && description.trim().length > 0;
+    ? Boolean(fromAccount && toAccount && fromAccount.id !== toAccount.id) &&
+      parsedAmount > 0 &&
+      (sameCurrency || parsedAmountTo > 0)
+    : Boolean(fromAccount) && parsedAmount > 0 && description.trim().length > 0;
 
   const handleTypeChange = (next: UiType) => {
     setUiType(next);
@@ -84,13 +95,14 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
   };
 
   const handleSave = async () => {
-    if (!valid) return;
-    if (isTransfer) {
+    if (!valid || !fromAccount) return;
+    if (isTransfer && toAccount) {
       await addTransfer({
         date,
-        from: transferFrom,
+        fromAccountId: fromAccount.id,
+        toAccountId: toAccount.id,
         amountFrom: parsedAmount,
-        amountTo: parsedAmountTo,
+        amountTo: sameCurrency ? parsedAmount : parsedAmountTo,
         description: description.trim() || undefined,
       });
     } else if (editing) {
@@ -99,8 +111,9 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
         date,
         description: description.trim(),
         category,
-        type: uiType,
-        currency,
+        type: uiType as MovementType,
+        accountId: fromAccount.id,
+        currency: fromAccount.currency,
         amount: parsedAmount,
       });
     } else {
@@ -108,8 +121,9 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
         date,
         description: description.trim(),
         category,
-        type: uiType,
-        currency,
+        type: uiType as MovementType,
+        accountId: fromAccount.id,
+        currency: fromAccount.currency,
         amount: parsedAmount,
       });
     }
@@ -136,10 +150,9 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
     );
   }
 
-  const toCurrency: Currency = transferFrom === 'ARS' ? 'USD' : 'ARS';
   const impliedRate =
-    isTransfer && parsedAmount > 0 && parsedAmountTo > 0
-      ? transferFrom === 'ARS'
+    isTransfer && !sameCurrency && parsedAmount > 0 && parsedAmountTo > 0 && fromAccount
+      ? fromAccount.currency === 'ARS'
         ? parsedAmount / parsedAmountTo
         : parsedAmountTo / parsedAmount
       : null;
@@ -171,55 +184,85 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
         <DayStepper date={date} onChange={setDate} />
       </Field>
 
-      {isTransfer ? (
-        <TransferFields
-          transferFrom={transferFrom}
-          onTransferFrom={setTransferFrom}
-          amount={amount}
-          onAmount={setAmount}
-          amountTo={amountTo}
-          onAmountTo={setAmountTo}
-          toCurrency={toCurrency}
-          impliedRate={impliedRate}
-          description={description}
-          onDescription={setDescription}
+      <Field label={isTransfer ? 'Sale de' : 'Cuenta'}>
+        <AccountPicker
+          accounts={accounts}
+          selectedId={accountId}
+          onSelect={(id) => {
+            setAccountId(id);
+            if (id === toAccountId) {
+              setToAccountId(accounts.find((a) => a.id !== id)?.id ?? null);
+            }
+          }}
         />
-      ) : (
-        <>
-          <Field label="Caja">
-            <SegmentedControl
-              options={[
-                { value: 'ARS', label: 'ARS' },
-                { value: 'USD', label: 'USD' },
-              ]}
-              value={currency}
-              onChange={setCurrency}
-            />
-          </Field>
+      </Field>
 
-          <Field label="Monto">
-            <FormInput
-              big
-              value={amount}
-              onChangeText={setAmount}
-              placeholder="0"
-              keyboardType="decimal-pad"
-              inputMode="decimal"
-            />
-          </Field>
+      {isTransfer && (
+        <Field label="Entra a">
+          <AccountPicker
+            accounts={accounts.filter((a) => a.id !== accountId)}
+            selectedId={toAccountId}
+            onSelect={setToAccountId}
+          />
+        </Field>
+      )}
 
-          <Field label="Descripción">
-            <FormInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Ej: Supermercado"
-            />
-          </Field>
+      <Field
+        label={
+          isTransfer && fromAccount
+            ? `Monto (${fromAccount.currency})`
+            : fromAccount
+              ? `Monto (${fromAccount.currency})`
+              : 'Monto'
+        }
+      >
+        <FormInput
+          big
+          value={amount}
+          onChangeText={setAmount}
+          placeholder="0"
+          keyboardType="decimal-pad"
+          inputMode="decimal"
+        />
+      </Field>
 
-          <Field label="Categoría">
-            <ChipGroup options={CATEGORIES[uiType]} value={category} onChange={setCategory} />
-          </Field>
-        </>
+      {isTransfer && !sameCurrency && toAccount && (
+        <Field label={`Entra (${toAccount.currency})`}>
+          <FormInput
+            big
+            value={amountTo}
+            onChangeText={setAmountTo}
+            placeholder="0"
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+          />
+        </Field>
+      )}
+
+      {impliedRate !== null && (
+        <ImpliedRate rate={impliedRate} />
+      )}
+
+      <Field label={isTransfer ? 'Descripción (opcional)' : 'Descripción'}>
+        <FormInput
+          value={description}
+          onChangeText={setDescription}
+          placeholder={
+            isTransfer && fromAccount && toAccount
+              ? `${fromAccount.name} → ${toAccount.name}`
+              : 'Ej: Supermercado'
+          }
+        />
+      </Field>
+
+      {!isTransfer && (
+        <Field label="Categoría">
+          <ChipGroup
+            options={CATEGORIES[uiType as MovementType]}
+            value={category}
+            onChange={setCategory}
+          />
+        </Field>
       )}
 
       <SaveButton label={editing ? 'Guardar' : 'Agregar'} disabled={!valid} onPress={handleSave} />
@@ -229,79 +272,12 @@ export function NewMovementModal({ visible, onClose, movement }: Props) {
   );
 }
 
-function TransferFields({
-  transferFrom,
-  onTransferFrom,
-  amount,
-  onAmount,
-  amountTo,
-  onAmountTo,
-  toCurrency,
-  impliedRate,
-  description,
-  onDescription,
-}: {
-  transferFrom: Currency;
-  onTransferFrom: (c: Currency) => void;
-  amount: string;
-  onAmount: (v: string) => void;
-  amountTo: string;
-  onAmountTo: (v: string) => void;
-  toCurrency: Currency;
-  impliedRate: number | null;
-  description: string;
-  onDescription: (v: string) => void;
-}) {
+function ImpliedRate({ rate }: { rate: number }) {
   const styles = useThemedStyles(makeStyles);
   return (
-    <>
-      <Field label="Dirección">
-        <SegmentedControl
-          options={[
-            { value: 'ARS', label: 'ARS → USD' },
-            { value: 'USD', label: 'USD → ARS' },
-          ]}
-          value={transferFrom}
-          onChange={onTransferFrom}
-        />
-      </Field>
-
-      <Field label={`Sale de Caja ${transferFrom}`}>
-        <FormInput
-          big
-          value={amount}
-          onChangeText={onAmount}
-          placeholder="0"
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-        />
-      </Field>
-
-      <Field label={`Entra a Caja ${toCurrency}`}>
-        <FormInput
-          big
-          value={amountTo}
-          onChangeText={onAmountTo}
-          placeholder="0"
-          keyboardType="decimal-pad"
-          inputMode="decimal"
-        />
-      </Field>
-
-      {impliedRate !== null && (
-        <Text style={styles.impliedRate}>
-          Tipo de cambio implícito: ${Math.round(impliedRate).toLocaleString('es-AR')}
-        </Text>
-      )}
-
-      <Field label="Descripción (opcional)">
-        <FormInput
-          value={description}
-          onChangeText={onDescription}
-          placeholder={transferFrom === 'ARS' ? 'Compra USD' : 'Venta USD'}
-        />
-      </Field>
-    </>
+    <Text style={styles.impliedRate}>
+      Tipo de cambio implícito: ${Math.round(rate).toLocaleString('es-AR')}
+    </Text>
   );
 }
 
@@ -316,15 +292,17 @@ function TransferSummarySheet({
   legs: Movement[];
   onDelete: () => void;
 }) {
+  const { accounts } = useApp();
   const styles = useThemedStyles(makeStyles);
   const out = legs.find((m) => m.type === 'gasto');
   const inn = legs.find((m) => m.type === 'ingreso');
+  const nameOf = (id?: string) => accounts.find((a) => a.id === id)?.name ?? 'cuenta eliminada';
   return (
     <Sheet visible={visible} onClose={onClose} title="Transferencia">
       {out && inn && (
         <Text style={styles.transferSummary}>
-          {out.description} · Salieron {formatMoney(out.amount, out.currency)} de Caja{' '}
-          {out.currency} y entraron {formatMoney(inn.amount, inn.currency)} a Caja {inn.currency}.
+          Salieron {formatMoney(out.amount, out.currency)} de {nameOf(out.accountId)} y entraron{' '}
+          {formatMoney(inn.amount, inn.currency)} a {nameOf(inn.accountId)}.
         </Text>
       )}
       <Text style={styles.transferHint}>

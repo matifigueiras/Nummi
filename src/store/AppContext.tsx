@@ -31,6 +31,9 @@ interface AppState {
   savingsGoal: SavingsGoal;
   dolar: DolarBlue;
   livePrices: LivePricesState;
+  addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
+  updateAccount: (account: Account) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
   addMovement: (movement: Omit<Movement, 'id'>) => Promise<void>;
   updateMovement: (movement: Movement) => Promise<void>;
   deleteMovement: (id: string) => Promise<void>;
@@ -125,6 +128,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMovements(await repository.getMovements());
   }, []);
 
+  const addAccount = useCallback(async (account: Omit<Account, 'id'>) => {
+    await repository.addAccount(account);
+    setAccounts(await repository.getAccounts());
+  }, []);
+
+  const updateAccount = useCallback(async (account: Account) => {
+    await repository.updateAccount(account);
+    setAccounts(await repository.getAccounts());
+  }, []);
+
+  // Al borrar una cuenta se van también sus movimientos
+  const deleteAccount = useCallback(
+    async (id: string) => {
+      await repository.deleteAccount(id);
+      setAccounts(await repository.getAccounts());
+      await refreshMovements();
+    },
+    [refreshMovements],
+  );
+
   const addMovement = useCallback(
     async (movement: Omit<Movement, 'id'>) => {
       await repository.addMovement(movement);
@@ -206,6 +229,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       savingsGoal,
       dolar,
       livePrices,
+      addAccount,
+      updateAccount,
+      deleteAccount,
       addMovement,
       updateMovement,
       deleteMovement,
@@ -228,6 +254,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       savingsGoal,
       dolar,
       livePrices,
+      addAccount,
+      updateAccount,
+      deleteAccount,
       addMovement,
       updateMovement,
       deleteMovement,
