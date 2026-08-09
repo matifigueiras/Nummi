@@ -41,6 +41,8 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Cotización del dólar blue, inline y compacta
 - Grid 2×2 de stats: Ingresos / Gastos / Ahorro del mes / Meta de ahorro
 - Gráfico donut Ingresos vs. Gastos
+- Tarjeta de **presupuestos del mes** con avance por categoría (ok / cerca del límite / excedido), consolidado en ARS sobre todas las cuentas
+- Gráfico de ahorro por mes (últimos 6 meses)
 
 ### Cuentas
 - Varias cuentas propias (banco, Mercado Pago, efectivo, dólares), con alta/edición/borrado
@@ -55,9 +57,6 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
   - Acciones y Cripto: ticker, cantidad, precio de compra, precio actual, **moneda de los precios** (CEDEARs/acciones locales cotizan en ARS)
   - Precio actual en vivo cuando el ticker existe en la fuente (punto verde en la fila); si no, queda el valor cargado a mano. Los precios traídos se persisten, así sin conexión se ve el último conocido
   - Propiedades: alquiler mensual, gastos, valor estimado — **cada monto con su propia moneda** (caso típico: valor en USD, alquiler en ARS), yield anual calculado automáticamente convirtiendo todo a USD al blue
-
-### Home
-- Además: tarjeta de **presupuestos del mes** con avance por categoría (ok / cerca del límite / excedido), consolidado en ARS sobre todas las cuentas
 
 ### Más
 - Apariencia (claro/oscuro/sistema), meta de ahorro y restablecer datos
