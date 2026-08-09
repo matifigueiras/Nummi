@@ -53,6 +53,7 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Saldo mostrado al cierre del mes elegido (en el mes en curso = saldo de hoy)
 - Equivalente en la otra moneda: en el mes en curso, al blue de hoy; en un mes cerrado, al blue vigente al cierre de ese mes (etiquetado con la fecha, ej. "al blue del 31 jul")
 - Widgets del mes: resumen Ingresos/Gastos/Balance y gastos por categoría (barras) — usan la cotización histórica de cada movimiento, no una fija para todo el mes
+- Buscador de movimientos (por descripción o categoría, sin distinguir mayúsculas ni acentos): mientras hay texto, la lista muestra resultados de TODOS los meses de esa cuenta; los widgets de arriba siguen hablando sólo del mes elegido
 
 ### Patrimonio
 - Tracking de posiciones individuales:

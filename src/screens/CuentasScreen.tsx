@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { AccountModal } from '../components/AccountModal';
 import { AccountPicker } from '../components/AccountPicker';
 import { Card } from '../components/Card';
+import { FormInput } from '../components/form';
 import { MonthNav } from '../components/MonthNav';
 import { MovementRow } from '../components/MovementRow';
 import { NewMovementModal } from '../components/NewMovementModal';
@@ -28,6 +29,7 @@ import {
   monthKey,
   monthKeyOf,
 } from '../utils/format';
+import { searchMovements } from '../utils/search';
 
 const MAX_CATEGORIES = 5;
 
@@ -42,6 +44,7 @@ export function CuentasScreen() {
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [accountModal, setAccountModal] = useState<'new' | 'edit' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Si la cuenta elegida se borró (o todavía no se eligió), cae en la primera
   const account = accounts.find((a) => a.id === selectedId) ?? accounts[0] ?? null;
@@ -62,6 +65,16 @@ export function CuentasScreen() {
         .sort((a, b) => (a.date < b.date ? 1 : -1)),
     [accountMovements, monthKeyValue],
   );
+
+  // Buscar reemplaza temporalmente el filtro por mes: mientras hay texto, la
+  // lista muestra coincidencias de TODOS los meses de esta cuenta (los
+  // widgets de arriba siguen hablando sólo del mes elegido).
+  const isSearching = searchQuery.trim().length > 0;
+  const searchResults = useMemo(
+    () => searchMovements(accountMovements, searchQuery).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [accountMovements, searchQuery],
+  );
+  const listedMovements = isSearching ? searchResults : monthMovements;
 
   // El saldo es acumulado: se muestra al cierre del mes elegido (en el mes en
   // curso coincide con el saldo de hoy).
@@ -186,16 +199,39 @@ export function CuentasScreen() {
       )}
 
       <Card style={styles.listCard}>
-        <Text style={styles.sectionTitle}>Movimientos</Text>
-        {monthMovements.length === 0 ? (
+        <View style={styles.listHeader}>
+          <Text style={styles.sectionTitle}>
+            {isSearching ? `Resultados (${listedMovements.length})` : 'Movimientos'}
+          </Text>
+          {isSearching && <Text style={styles.searchHint}>en todos los meses</Text>}
+        </View>
+
+        <View style={styles.searchRow}>
+          <Feather name="search" size={16} color={styles.emptyIcon.color} />
+          <FormInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Buscar por descripción o categoría"
+          />
+          {isSearching && (
+            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+              <Feather name="x" size={16} color={styles.emptyIcon.color} />
+            </Pressable>
+          )}
+        </View>
+
+        {listedMovements.length === 0 ? (
           <View style={styles.empty}>
             <Feather name="inbox" size={22} color={styles.emptyIcon.color} />
             <Text style={styles.emptyText}>
-              No hay movimientos en {formatMonth(month).toLowerCase()} en esta cuenta.
+              {isSearching
+                ? `Sin resultados para "${searchQuery.trim()}".`
+                : `No hay movimientos en ${formatMonth(month).toLowerCase()} en esta cuenta.`}
             </Text>
           </View>
         ) : (
-          monthMovements.map((mov) => (
+          listedMovements.map((mov) => (
             <MovementRow key={mov.id} movement={mov} onPress={setEditingMovement} />
           ))
         )}
@@ -389,11 +425,34 @@ const makeStyles = (c: ThemeColors) =>
     listCard: {
       paddingTop: spacing.lg,
     },
+    listHeader: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: spacing.xs,
+      marginBottom: spacing.md,
+    },
     sectionTitle: {
       fontSize: font.heading,
       fontWeight: '700',
       color: c.ink,
-      marginBottom: spacing.xs,
+    },
+    searchHint: {
+      fontSize: font.caption + 1,
+      color: c.muted,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: c.bg,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    searchInput: {
+      flex: 1,
+      backgroundColor: 'transparent',
+      paddingHorizontal: 0,
     },
     empty: {
       alignItems: 'center',
