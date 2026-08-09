@@ -10,11 +10,6 @@ import { ChipGroup, ConfirmDeleteButton, Field, FormInput, parseAmount, SaveButt
 import { SegmentedControl } from './SegmentedControl';
 import { Sheet } from './Sheet';
 
-const CATEGORIES: Record<MovementType, string[]> = {
-  gasto: ['Vivienda', 'Servicios', 'Comida', 'Transporte', 'Salud', 'Salidas', 'Ahorro', 'Otros'],
-  ingreso: ['Sueldo', 'Freelance', 'Otros'],
-};
-
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 interface Props {
@@ -24,14 +19,16 @@ interface Props {
 }
 
 export function RecurringModal({ visible, onClose, recurring }: Props) {
-  const { accounts, addRecurring, updateRecurring, deleteRecurring } = useApp();
+  const { accounts, categories, addRecurring, updateRecurring, deleteRecurring } = useApp();
+  const categoryNames = (t: MovementType) =>
+    categories.filter((c) => c.type === t).map((c) => c.name);
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [type, setType] = useState<MovementType>('gasto');
   const [accountId, setAccountId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Vivienda');
+  const [category, setCategory] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState(1);
   const [active, setActive] = useState(true);
 
@@ -52,7 +49,7 @@ export function RecurringModal({ visible, onClose, recurring }: Props) {
       setAccountId(accounts[0]?.id ?? null);
       setAmount('');
       setDescription('');
-      setCategory('Vivienda');
+      setCategory(categoryNames('gasto')[0] ?? 'Otros');
       setDayOfMonth(1);
       setActive(true);
     }
@@ -64,7 +61,8 @@ export function RecurringModal({ visible, onClose, recurring }: Props) {
 
   const handleTypeChange = (next: MovementType) => {
     setType(next);
-    if (!CATEGORIES[next].includes(category)) setCategory(CATEGORIES[next][0]);
+    const options = categoryNames(next);
+    if (!options.includes(category)) setCategory(options[0] ?? 'Otros');
   };
 
   const handleSave = async () => {
@@ -132,7 +130,7 @@ export function RecurringModal({ visible, onClose, recurring }: Props) {
       </Field>
 
       <Field label="Categoría">
-        <ChipGroup options={CATEGORIES[type]} value={category} onChange={setCategory} />
+        <ChipGroup options={categoryNames(type)} value={category} onChange={setCategory} />
       </Field>
 
       <Field label={`Día del mes: ${dayOfMonth}`}>

@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Account,
+  Budget,
+  Category,
   Movement,
   Position,
   Property,
@@ -9,6 +11,7 @@ import {
 } from '../types';
 import {
   mockAccounts,
+  mockCategories,
   mockMovements,
   mockPositions,
   mockProperties,
@@ -54,6 +57,13 @@ export interface DataRepository {
   addProperty(property: Omit<Property, 'id'>): Promise<Property>;
   updateProperty(property: Property): Promise<Property>;
   deleteProperty(id: string): Promise<void>;
+  getCategories(): Promise<Category[]>;
+  addCategory(category: Omit<Category, 'id'>): Promise<Category>;
+  /** Renombrar arrastra los movimientos y presupuestos que la usaban */
+  updateCategory(category: Category, previousName: string): Promise<Category>;
+  deleteCategory(id: string): Promise<void>;
+  getBudgets(): Promise<Budget[]>;
+  setBudget(category: string, amount: number): Promise<void>;
   getRecurrings(): Promise<RecurringMovement[]>;
   addRecurring(recurring: Omit<RecurringMovement, 'id'>): Promise<RecurringMovement>;
   updateRecurring(recurring: RecurringMovement): Promise<RecurringMovement>;
@@ -68,8 +78,10 @@ export interface DataRepository {
 }
 
 interface StoredData {
-  version: 3;
+  version: 4;
   accounts: Account[];
+  categories: Category[];
+  budgets: Budget[];
   recurrings: RecurringMovement[];
   /** recurringId -> meses "yyyy-mm" ya generados */
   appliedMonths: Record<string, string[]>;
@@ -83,8 +95,10 @@ const STORAGE_KEY = 'nummi:data:v1';
 
 function seed(): StoredData {
   return {
-    version: 3,
+    version: 4,
     accounts: [...mockAccounts],
+    categories: [...mockCategories],
+    budgets: [],
     recurrings: [],
     appliedMonths: {},
     movements: [...mockMovements],
@@ -107,8 +121,10 @@ function migrateV1toV2(data: any): StoredData {
     accountId: m.accountId ?? byCurrency[m.currency] ?? 'caja-ars',
   }));
   return {
-    version: 3,
+    version: 4,
     accounts,
+    categories: [...mockCategories],
+    budgets: [],
     recurrings: [],
     appliedMonths: {},
     movements,
@@ -132,15 +148,29 @@ class LocalStorageRepository implements DataRepository {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed?.version === 3) {
+        if (parsed?.version === 4) {
           this.state = parsed as StoredData;
           return this.state;
+        }
+        // v3 no tenía categorías configurables ni presupuestos
+        if (parsed?.version === 3) {
+          const migrated: StoredData = {
+            ...(parsed as StoredData),
+            version: 4,
+            categories: [...mockCategories],
+            budgets: [],
+          };
+          this.state = migrated;
+          await this.persist();
+          return migrated;
         }
         // v2 no tenía movimientos fijos: se agregan vacíos
         if (parsed?.version === 2) {
           const migrated: StoredData = {
             ...(parsed as StoredData),
-            version: 3,
+            version: 4,
+            categories: [...mockCategories],
+            budgets: [],
             recurrings: [],
             appliedMonths: {},
           };
@@ -301,6 +331,63 @@ class LocalStorageRepository implements DataRepository {
   async deleteProperty(id: string): Promise<void> {
     const state = await this.load();
     state.properties = state.properties.filter((p) => p.id !== id);
+    await this.persist();
+  }
+
+  async getCategories(): Promise<Category[]> {
+    return [...(await this.load()).categories];
+  }
+
+  async addCategory(category: Omit<Category, 'id'>): Promise<Category> {
+    const state = await this.load();
+    const created: Category = { ...category, id: newId('c') };
+    state.categories.push(created);
+    await this.persist();
+    return created;
+  }
+
+  async updateCategory(category: Category, previousName: string): Promise<Category> {
+    const state = await this.load();
+    state.categories = state.categories.map((c) => (c.id === category.id ? category : c));
+    if (previousName !== category.name) {
+      // Los movimientos guardan el nombre: hay que arrastrarlos al renombrar
+      state.movements = state.movements.map((m) =>
+        m.category === previousName && m.type === category.type
+          ? { ...m, category: category.name }
+          : m,
+      );
+      state.recurrings = state.recurrings.map((r) =>
+        r.category === previousName && r.type === category.type
+          ? { ...r, category: category.name }
+          : r,
+      );
+      state.budgets = state.budgets.map((b) =>
+        b.category === previousName ? { ...b, category: category.name } : b,
+      );
+    }
+    await this.persist();
+    return category;
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const state = await this.load();
+    const target = state.categories.find((c) => c.id === id);
+    state.categories = state.categories.filter((c) => c.id !== id);
+    // Los movimientos históricos conservan el nombre: la categoría deja de
+    // ofrecerse, pero lo que ya se gastó no se reescribe ni se pierde.
+    if (target) state.budgets = state.budgets.filter((b) => b.category !== target.name);
+    await this.persist();
+  }
+
+  async getBudgets(): Promise<Budget[]> {
+    return [...(await this.load()).budgets];
+  }
+
+  async setBudget(category: string, amount: number): Promise<void> {
+    const state = await this.load();
+    const rest = state.budgets.filter((b) => b.category !== category);
+    // Monto 0 o negativo = sin presupuesto
+    state.budgets = amount > 0 ? [...rest, { category, amount }] : rest;
     await this.persist();
   }
 

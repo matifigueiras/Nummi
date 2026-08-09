@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
+import { BudgetsModal } from '../components/BudgetsModal';
+import { CategoriesModal } from '../components/CategoriesModal';
+import { ExportModal } from '../components/ExportModal';
 import { ConfirmDeleteButton } from '../components/form';
 import { RecurringList } from '../components/RecurringList';
 import { SavingsGoalModal } from '../components/SavingsGoalModal';
@@ -15,8 +18,6 @@ import { font, radius, spacing, ThemeColors } from '../theme';
 // El resto del contenido de "Más" se define en próximas iteraciones.
 
 const PENDING_ITEMS: { icon: keyof typeof Feather.glyphMap; label: string }[] = [
-  { icon: 'tag', label: 'Categorías' },
-  { icon: 'download', label: 'Exportar datos' },
   { icon: 'database', label: 'Conectar almacenamiento' },
 ];
 
@@ -25,6 +26,9 @@ export function MasScreen() {
   const { resetData } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [showBudgets, setShowBudgets] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
 
   return (
@@ -64,6 +68,33 @@ export function MasScreen() {
           <Text style={styles.itemLabel}>Meta de ahorro</Text>
           <Feather name="chevron-right" size={18} color={colors.muted} />
         </Pressable>
+        <Pressable
+          style={[styles.item, styles.itemBorder]}
+          onPress={() => setShowBudgets(true)}
+        >
+          <View style={styles.itemIcon}>
+            <ItemIcon icon="sliders" />
+          </View>
+          <Text style={styles.itemLabel}>Presupuestos</Text>
+          <Feather name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable
+          style={[styles.item, styles.itemBorder]}
+          onPress={() => setShowCategories(true)}
+        >
+          <View style={styles.itemIcon}>
+            <ItemIcon icon="tag" />
+          </View>
+          <Text style={styles.itemLabel}>Categorías</Text>
+          <Feather name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
+        <Pressable style={[styles.item, styles.itemBorder]} onPress={() => setShowExport(true)}>
+          <View style={styles.itemIcon}>
+            <ItemIcon icon="download" />
+          </View>
+          <Text style={styles.itemLabel}>Exportar datos</Text>
+          <Feather name="chevron-right" size={18} color={colors.muted} />
+        </Pressable>
         {PENDING_ITEMS.map((item) => (
           <View key={item.label} style={[styles.item, styles.itemBorder]}>
             <View style={styles.itemIcon}>
@@ -87,6 +118,9 @@ export function MasScreen() {
       <Text style={styles.footer}>Nummi v0.1 · Datos guardados en este dispositivo</Text>
 
       <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />
+      <CategoriesModal visible={showCategories} onClose={() => setShowCategories(false)} />
+      <BudgetsModal visible={showBudgets} onClose={() => setShowBudgets(false)} />
+      <ExportModal visible={showExport} onClose={() => setShowExport(false)} />
 
       <Sheet
         visible={showResetModal}

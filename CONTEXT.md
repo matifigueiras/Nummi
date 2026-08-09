@@ -56,12 +56,18 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
   - Precio actual en vivo cuando el ticker existe en la fuente (punto verde en la fila); si no, queda el valor cargado a mano. Los precios traídos se persisten, así sin conexión se ve el último conocido
   - Propiedades: alquiler mensual, gastos, valor estimado — **cada monto con su propia moneda** (caso típico: valor en USD, alquiler en ARS), yield anual calculado automáticamente convirtiendo todo a USD al blue
 
+### Home
+- Además: tarjeta de **presupuestos del mes** con avance por categoría (ok / cerca del límite / excedido), consolidado en ARS sobre todas las cuentas
+
 ### Más
 - Apariencia (claro/oscuro/sistema), meta de ahorro y restablecer datos
+- **Categorías propias**: alta, renombrado (arrastra movimientos, fijos y presupuestos) y borrado (los movimientos históricos conservan el nombre)
+- **Presupuestos**: límite mensual en pesos por categoría de gasto
+- **Exportar datos**: CSV de movimientos, posiciones y propiedades (separador `;`, coma decimal y BOM para que Excel respete los acentos)
 - **Movimientos fijos**: sueldo, alquiler, suscripciones. Se definen una vez y la app los
   registra sola cuando llega el día del mes; nunca se duplican, no se adelantan a la fecha,
   y si se borra el generado no vuelve a aparecer ese mes. Se pueden pausar sin perderlos
-- Resto (categorías propias, exportar, backend real): a definir en próximas iteraciones
+- Resto (backend real): a definir en próximas iteraciones
 
 ## 6. Principios de trabajo
 

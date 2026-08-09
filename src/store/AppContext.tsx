@@ -11,7 +11,16 @@ import { AppState as RNAppState } from 'react-native';
 import { NewTransfer, repository } from '../data/repository';
 import { DolarBlue, useDolarBlue } from '../services/dolar';
 import { fetchLivePrices } from '../services/prices';
-import { Account, Movement, Position, Property, RecurringMovement, SavingsGoal } from '../types';
+import {
+  Account,
+  Budget,
+  Category,
+  Movement,
+  Position,
+  Property,
+  RecurringMovement,
+  SavingsGoal,
+} from '../types';
 import { pendingRecurrings, toMovement } from '../utils/recurring';
 import { monthKeyOf } from '../utils/format';
 
@@ -32,6 +41,8 @@ interface AppState {
   properties: Property[];
   savingsGoal: SavingsGoal;
   recurrings: RecurringMovement[];
+  categories: Category[];
+  budgets: Budget[];
   dolar: DolarBlue;
   livePrices: LivePricesState;
   addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
@@ -47,6 +58,10 @@ interface AppState {
   addProperty: (property: Omit<Property, 'id'>) => Promise<void>;
   updateProperty: (property: Property) => Promise<void>;
   deleteProperty: (id: string) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
+  updateCategory: (category: Category, previousName: string) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  setBudget: (category: string, amount: number) => Promise<void>;
   addRecurring: (recurring: Omit<RecurringMovement, 'id'>) => Promise<void>;
   updateRecurring: (recurring: RecurringMovement) => Promise<void>;
   deleteRecurring: (id: string) => Promise<void>;
@@ -65,6 +80,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [savingsGoal, setSavingsGoal] = useState<SavingsGoal>({ currency: 'ARS', amount: 0 });
   const [recurrings, setRecurrings] = useState<RecurringMovement[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [livePrices, setLivePrices] = useState<LivePricesState>({ updatedAt: null, liveIds: [] });
   const dolar = useDolarBlue();
 
@@ -75,14 +92,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   positionsRef.current = positions;
 
   const loadAll = useCallback(async () => {
-    const [acc, movs, pos, props, goal, recs] = await Promise.all([
+    const [acc, movs, pos, props, goal, recs, cats, buds] = await Promise.all([
       repository.getAccounts(),
       repository.getMovements(),
       repository.getPositions(),
       repository.getProperties(),
       repository.getSavingsGoal(),
       repository.getRecurrings(),
+      repository.getCategories(),
+      repository.getBudgets(),
     ]);
+    setCategories(cats);
+    setBudgets(buds);
     setAccounts(acc);
     setMovements(movs);
     setRecurrings(recs);
@@ -237,6 +258,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProperties(await repository.getProperties());
   }, []);
 
+  const addCategory = useCallback(async (category: Omit<Category, 'id'>) => {
+    await repository.addCategory(category);
+    setCategories(await repository.getCategories());
+  }, []);
+
+  // Renombrar arrastra movimientos, fijos y presupuestos: hay que releer todo
+  const updateCategory = useCallback(async (category: Category, previousName: string) => {
+    await repository.updateCategory(category, previousName);
+    const [cats, movs, recs, buds] = await Promise.all([
+      repository.getCategories(),
+      repository.getMovements(),
+      repository.getRecurrings(),
+      repository.getBudgets(),
+    ]);
+    setCategories(cats);
+    setMovements(movs);
+    setRecurrings(recs);
+    setBudgets(buds);
+  }, []);
+
+  const deleteCategory = useCallback(async (id: string) => {
+    await repository.deleteCategory(id);
+    setCategories(await repository.getCategories());
+    setBudgets(await repository.getBudgets());
+  }, []);
+
+  const setBudget = useCallback(async (category: string, amount: number) => {
+    await repository.setBudget(category, amount);
+    setBudgets(await repository.getBudgets());
+  }, []);
+
   const addRecurring = useCallback(
     async (recurring: Omit<RecurringMovement, 'id'>) => {
       await repository.addRecurring(recurring);
@@ -275,6 +327,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       properties,
       savingsGoal,
       recurrings,
+      categories,
+      budgets,
       dolar,
       livePrices,
       addAccount,
@@ -290,6 +344,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addProperty,
       updateProperty,
       deleteProperty,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      setBudget,
       addRecurring,
       updateRecurring,
       deleteRecurring,
@@ -304,6 +362,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       properties,
       savingsGoal,
       recurrings,
+      categories,
+      budgets,
       dolar,
       livePrices,
       addAccount,
@@ -319,6 +379,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addProperty,
       updateProperty,
       deleteProperty,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      setBudget,
       addRecurring,
       updateRecurring,
       deleteRecurring,

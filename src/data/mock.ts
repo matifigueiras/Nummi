@@ -1,4 +1,22 @@
-import { Account, Movement, Position, Property, SavingsGoal } from '../types';
+import { Account, Category, Movement, Position, Property, SavingsGoal } from '../types';
+
+// Categorías iniciales. "Transferencia" no está: la usan las transferencias
+// entre cuentas y no se elige a mano.
+export const mockCategories: Category[] = [
+  { id: 'c-comida', name: 'Comida', type: 'gasto' },
+  { id: 'c-vivienda', name: 'Vivienda', type: 'gasto' },
+  { id: 'c-transporte', name: 'Transporte', type: 'gasto' },
+  { id: 'c-servicios', name: 'Servicios', type: 'gasto' },
+  { id: 'c-salidas', name: 'Salidas', type: 'gasto' },
+  { id: 'c-salud', name: 'Salud', type: 'gasto' },
+  { id: 'c-viajes', name: 'Viajes', type: 'gasto' },
+  { id: 'c-ahorro-g', name: 'Ahorro', type: 'gasto' },
+  { id: 'c-otros-g', name: 'Otros', type: 'gasto' },
+  { id: 'c-sueldo', name: 'Sueldo', type: 'ingreso' },
+  { id: 'c-freelance', name: 'Freelance', type: 'ingreso' },
+  { id: 'c-ahorro-i', name: 'Ahorro', type: 'ingreso' },
+  { id: 'c-otros-i', name: 'Otros', type: 'ingreso' },
+];
 
 // Datos simulados. Cuando exista una API/base de datos real, este archivo
 // desaparece y el repositorio pasa a leer de ahí.

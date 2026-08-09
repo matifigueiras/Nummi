@@ -66,6 +66,21 @@ export interface Property {
   valueCurrency: Currency;
 }
 
+/** Categoría configurable. Los movimientos guardan el nombre, no el id. */
+export interface Category {
+  id: string;
+  name: string;
+  type: MovementType;
+}
+
+/** Límite de gasto mensual para una categoría, consolidado en ARS */
+export interface Budget {
+  /** Nombre de la categoría de gasto */
+  category: string;
+  /** Monto mensual en ARS */
+  amount: number;
+}
+
 /**
  * Movimiento que se repite todos los meses (sueldo, alquiler, suscripciones).
  * La app lo carga sola cuando llega el día, así no hay que registrarlo a mano

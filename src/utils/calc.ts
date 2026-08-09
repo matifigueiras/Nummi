@@ -1,4 +1,4 @@
-import { Account, Currency, Movement, Position, Property } from '../types';
+import { Account, Budget, Currency, Movement, Position, Property } from '../types';
 import { monthKey, monthKeyOf } from './format';
 
 // Cálculos puros de la app. Viven acá (y no dentro de las pantallas) para que
@@ -126,6 +126,57 @@ export function expensesByCategory(
   const rest = sorted.slice(max).reduce((sum, item) => sum + item.amount, 0);
   if (rest > 0) top.push({ category: 'Otras', amount: rest });
   return top;
+}
+
+export interface BudgetProgress {
+  category: string;
+  /** Límite mensual, en ARS */
+  limit: number;
+  /** Gastado en el mes, consolidado en ARS */
+  spent: number;
+  /** 0..n — puede pasar de 1 si se excedió */
+  ratio: number;
+  /** Positivo: queda plata. Negativo: se pasó */
+  remaining: number;
+  status: 'ok' | 'cerca' | 'excedido';
+}
+
+/** A partir de este porcentaje el presupuesto avisa que está por agotarse */
+const NEAR_LIMIT_RATIO = 0.8;
+
+/**
+ * Avance de cada presupuesto en un mes, sobre TODAS las cuentas y consolidado
+ * en ARS (los gastos en USD se convierten al blue).
+ */
+export function budgetProgress(
+  budgets: Budget[],
+  movements: Movement[],
+  key: string,
+  ventaRate: number,
+): BudgetProgress[] {
+  const spentByCategory = new Map<string, number>();
+  for (const mov of movements) {
+    if (!isCountedAsFlow(mov) || mov.type !== 'gasto') continue;
+    if (monthKey(mov.date) !== key) continue;
+    const inArs = toArs(mov.amount, mov.currency, ventaRate);
+    spentByCategory.set(mov.category, (spentByCategory.get(mov.category) ?? 0) + inArs);
+  }
+
+  return budgets
+    .map((budget) => {
+      const spent = spentByCategory.get(budget.category) ?? 0;
+      const ratio = budget.amount > 0 ? spent / budget.amount : 0;
+      return {
+        category: budget.category,
+        limit: budget.amount,
+        spent,
+        ratio,
+        remaining: budget.amount - spent,
+        status: ratio > 1 ? 'excedido' : ratio >= NEAR_LIMIT_RATIO ? 'cerca' : 'ok',
+      } as BudgetProgress;
+    })
+    // Lo más urgente primero
+    .sort((a, b) => b.ratio - a.ratio);
 }
 
 /** Valor de mercado de una posición, en su propia moneda */

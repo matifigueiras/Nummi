@@ -2,6 +2,7 @@ import { Account, Movement, Position, Property } from '../../types';
 import {
   accountBalance,
   accountBalanceAt,
+  budgetProgress,
   expensesByCategory,
   monthStats,
   positionPnlPct,
@@ -239,6 +240,69 @@ describe('expensesByCategory', () => {
     ];
     expect(expensesByCategory(movements, '2026-08', 5)).toEqual([
       { category: 'Comida', amount: 100 },
+    ]);
+  });
+});
+
+describe('budgetProgress', () => {
+  const budgets = [{ category: 'Comida', amount: 200_000 }];
+
+  it('calcula lo gastado y lo que queda', () => {
+    const movements = [movement({ category: 'Comida', amount: 50_000 })];
+    const [result] = budgetProgress(budgets, movements, '2026-08', RATE);
+    expect(result.spent).toBe(50_000);
+    expect(result.remaining).toBe(150_000);
+    expect(result.status).toBe('ok');
+  });
+
+  it('avisa cuando se acerca al límite (80%)', () => {
+    const movements = [movement({ category: 'Comida', amount: 160_000 })];
+    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].status).toBe('cerca');
+  });
+
+  it('marca excedido y deja el sobrante en negativo', () => {
+    const movements = [movement({ category: 'Comida', amount: 250_000 })];
+    const [result] = budgetProgress(budgets, movements, '2026-08', RATE);
+    expect(result.status).toBe('excedido');
+    expect(result.remaining).toBe(-50_000);
+    expect(result.ratio).toBeCloseTo(1.25, 5);
+  });
+
+  it('suma los gastos en USD convertidos al blue', () => {
+    const movements = [movement({ category: 'Comida', currency: 'USD', amount: 100 })];
+    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].spent).toBe(100_000);
+  });
+
+  it('ignora ingresos, transferencias y otros meses', () => {
+    const movements = [
+      movement({ id: '1', category: 'Comida', type: 'ingreso', amount: 9999 }),
+      movement({ id: '2', category: 'Comida', amount: 8888, transferId: 't1' }),
+      movement({ id: '3', category: 'Comida', amount: 7777, date: '2026-07-05' }),
+    ];
+    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].spent).toBe(0);
+  });
+
+  // Las cuentas no importan: el presupuesto es del mes, no de una cuenta
+  it('suma los gastos de todas las cuentas', () => {
+    const movements = [
+      movement({ id: '1', category: 'Comida', accountId: 'caja-ars', amount: 30_000 }),
+      movement({ id: '2', category: 'Comida', accountId: 'mp', amount: 20_000 }),
+    ];
+    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].spent).toBe(50_000);
+  });
+
+  it('ordena primero lo más consumido', () => {
+    const many = [
+      { category: 'Comida', amount: 100_000 },
+      { category: 'Salidas', amount: 100_000 },
+    ];
+    const movements = [
+      movement({ id: '1', category: 'Comida', amount: 10_000 }),
+      movement({ id: '2', category: 'Salidas', amount: 90_000 }),
+    ];
+    expect(budgetProgress(many, movements, '2026-08', RATE).map((b) => b.category)).toEqual([
+      'Salidas',
+      'Comida',
     ]);
   });
 });

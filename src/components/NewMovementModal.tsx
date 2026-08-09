@@ -18,11 +18,6 @@ import {
 import { SegmentedControl } from './SegmentedControl';
 import { Sheet } from './Sheet';
 
-const CATEGORIES: Record<MovementType, string[]> = {
-  gasto: ['Comida', 'Vivienda', 'Transporte', 'Servicios', 'Salidas', 'Salud', 'Viajes', 'Ahorro', 'Otros'],
-  ingreso: ['Sueldo', 'Freelance', 'Ahorro', 'Otros'],
-};
-
 type UiType = MovementType | 'transferencia';
 
 interface Props {
@@ -35,12 +30,23 @@ interface Props {
 }
 
 export function NewMovementModal({ visible, onClose, movement, defaultAccountId }: Props) {
-  const { accounts, movements, addMovement, updateMovement, deleteMovement, addTransfer } = useApp();
+  const {
+    accounts,
+    movements,
+    categories,
+    addMovement,
+    updateMovement,
+    deleteMovement,
+    addTransfer,
+  } = useApp();
+  // Nombres de categoría por tipo, según lo configurado en Más
+  const categoryNames = (t: MovementType) =>
+    categories.filter((c) => c.type === t).map((c) => c.name);
   const [uiType, setUiType] = useState<UiType>('gasto');
   const [accountId, setAccountId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Comida');
+  const [category, setCategory] = useState('');
   const [date, setDate] = useState(todayISO());
   // Transferencias
   const [toAccountId, setToAccountId] = useState<string | null>(null);
@@ -65,7 +71,7 @@ export function NewMovementModal({ visible, onClose, movement, defaultAccountId 
       setAccountId(first);
       setAmount('');
       setDescription('');
-      setCategory('Comida');
+      setCategory(categoryNames('gasto')[0] ?? 'Otros');
       setDate(todayISO());
       setToAccountId(accounts.find((a) => a.id !== first)?.id ?? null);
       setAmountTo('');
@@ -89,8 +95,9 @@ export function NewMovementModal({ visible, onClose, movement, defaultAccountId 
 
   const handleTypeChange = (next: UiType) => {
     setUiType(next);
-    if (next !== 'transferencia' && !CATEGORIES[next].includes(category)) {
-      setCategory(CATEGORIES[next][0]);
+    if (next !== 'transferencia') {
+      const options = categoryNames(next);
+      if (!options.includes(category)) setCategory(options[0] ?? 'Otros');
     }
   };
 
@@ -258,7 +265,7 @@ export function NewMovementModal({ visible, onClose, movement, defaultAccountId 
       {!isTransfer && (
         <Field label="Categoría">
           <ChipGroup
-            options={CATEGORIES[uiType as MovementType]}
+            options={categoryNames(uiType as MovementType)}
             value={category}
             onChange={setCategory}
           />

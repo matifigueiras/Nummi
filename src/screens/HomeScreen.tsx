@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { BudgetsCard } from '../components/BudgetsCard';
 import { Card } from '../components/Card';
 import { Donut } from '../components/Donut';
 import { MonthNav } from '../components/MonthNav';
@@ -11,7 +12,7 @@ import { StatTile } from '../components/StatTile';
 import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
-import { monthStats, savingsByMonth } from '../utils/calc';
+import { budgetProgress, monthStats, savingsByMonth } from '../utils/calc';
 import {
   formatMoney,
   formatMoneyCompact,
@@ -36,7 +37,7 @@ function startOfMonth(date: Date): Date {
 }
 
 export function HomeScreen() {
-  const { movements, savingsGoal, dolar } = useApp();
+  const { movements, savingsGoal, budgets, dolar } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -49,6 +50,11 @@ export function HomeScreen() {
   const { income, expense, savings } = useMemo(
     () => monthStats(movements, monthKeyOf(month), dolar.rate.venta),
     [movements, month, dolar.rate.venta],
+  );
+
+  const progress = useMemo(
+    () => budgetProgress(budgets, movements, monthKeyOf(month), dolar.rate.venta),
+    [budgets, movements, month, dolar.rate.venta],
   );
 
   const trend = useMemo(
@@ -147,6 +153,8 @@ export function HomeScreen() {
         <Text style={styles.cardTitle}>Ingresos vs. Gastos</Text>
         <Donut income={income} expense={expense} />
       </Card>
+
+      <BudgetsCard progress={progress} editable={isCurrentMonth} />
 
       <Card>
         <Text style={styles.cardTitle}>Ahorro por mes</Text>
