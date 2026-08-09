@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { BudgetsCard } from '../components/BudgetsCard';
@@ -37,7 +37,7 @@ function startOfMonth(date: Date): Date {
 }
 
 export function HomeScreen() {
-  const { movements, savingsGoal, budgets, dolar } = useApp();
+  const { movements, savingsGoal, budgets, dolar, dolarHistory } = useApp();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -45,21 +45,27 @@ export function HomeScreen() {
 
   const isCurrentMonth = monthKeyOf(month) === monthKeyOf(new Date());
 
-  // Consolidado en ARS: los movimientos en USD se convierten al blue (venta).
+  // Cada movimiento en USD se convierte al blue de SU fecha (si hay
+  // historial cargado); si no, cae en la cotización de hoy.
+  const rateForDate = useCallback(
+    (date: string) => dolarHistory.rateForDate(date) ?? dolar.rate.venta,
+    [dolarHistory, dolar.rate.venta],
+  );
+
   // Las transferencias entre cajas no son ingresos ni gastos reales.
   const { income, expense, savings } = useMemo(
-    () => monthStats(movements, monthKeyOf(month), dolar.rate.venta),
-    [movements, month, dolar.rate.venta],
+    () => monthStats(movements, monthKeyOf(month), rateForDate),
+    [movements, month, rateForDate],
   );
 
   const progress = useMemo(
-    () => budgetProgress(budgets, movements, monthKeyOf(month), dolar.rate.venta),
-    [budgets, movements, month, dolar.rate.venta],
+    () => budgetProgress(budgets, movements, monthKeyOf(month), rateForDate),
+    [budgets, movements, month, rateForDate],
   );
 
   const trend = useMemo(
-    () => savingsByMonth(movements, month, TREND_MONTHS, dolar.rate.venta),
-    [movements, month, dolar.rate.venta],
+    () => savingsByMonth(movements, month, TREND_MONTHS, rateForDate),
+    [movements, month, rateForDate],
   );
   // Porcentaje real (puede superar 100%); la barra visual se recorta a 100%
   const goalPct = savingsGoal.amount > 0 ? Math.max(0, (savings / savingsGoal.amount) * 100) : 0;

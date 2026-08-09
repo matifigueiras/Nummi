@@ -12,8 +12,22 @@ import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
-import { accountBalanceAt, expensesByCategory, monthStats, totalByCurrency } from '../utils/calc';
-import { formatMoney, formatMonth, formatSigned, monthKey, monthKeyOf } from '../utils/format';
+import {
+  accountBalanceAt,
+  constantRate,
+  expensesByCategory,
+  monthStats,
+  totalByCurrency,
+} from '../utils/calc';
+import {
+  endOfMonthISO,
+  formatMoney,
+  formatMonth,
+  formatShortDate,
+  formatSigned,
+  monthKey,
+  monthKeyOf,
+} from '../utils/format';
 
 const MAX_CATEGORIES = 5;
 
@@ -22,7 +36,7 @@ function startOfMonth(date: Date): Date {
 }
 
 export function CuentasScreen() {
-  const { accounts, movements, dolar } = useApp();
+  const { accounts, movements, dolar, dolarHistory } = useApp();
   const styles = useThemedStyles(makeStyles);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -56,15 +70,19 @@ export function CuentasScreen() {
     [account, movements, monthKeyValue],
   );
 
-  // Equivalente en la otra moneda, al blue (venta como referencia)
+  // Equivalente en la otra moneda. En el mes en curso, al blue de hoy; en un
+  // mes cerrado, al blue vigente al cierre de ese mes (no al de hoy).
+  const equivalentRate = isCurrentMonth
+    ? dolar.rate.venta
+    : (dolarHistory.rateForDate(endOfMonthISO(month)) ?? dolar.rate.venta);
   const equivalent =
     currency === 'ARS'
-      ? formatMoney(balance / dolar.rate.venta, 'USD')
-      : formatMoney(balance * dolar.rate.venta, 'ARS');
+      ? formatMoney(balance / equivalentRate, 'USD')
+      : formatMoney(balance * equivalentRate, 'ARS');
 
   // Los montos ya están en la moneda de la caja: no hay conversión (rate = 1)
   const { income: monthIncome, expense: monthExpense } = useMemo(
-    () => monthStats(accountMovements, monthKeyValue, 1),
+    () => monthStats(accountMovements, monthKeyValue, constantRate(1)),
     [accountMovements, monthKeyValue],
   );
 
@@ -110,7 +128,8 @@ export function CuentasScreen() {
         </View>
         <Text style={styles.balanceValue}>{formatMoney(balance, currency)}</Text>
         <Text style={styles.balanceEquivalent}>
-          ≈ {equivalent} al blue{isCurrentMonth ? '' : ' de hoy'}
+          ≈ {equivalent} al blue
+          {isCurrentMonth ? '' : ` del ${formatShortDate(endOfMonthISO(month))}`}
         </Text>
         {/* Con varias cuentas de la misma moneda, el total ayuda a no perder
             de vista cuánto hay en total en pesos (o en dólares) */}

@@ -10,6 +10,7 @@ import React, {
 import { AppState as RNAppState } from 'react-native';
 import { NewTransfer, repository } from '../data/repository';
 import { DolarBlue, useDolarBlue } from '../services/dolar';
+import { DolarHistory, useDolarHistory } from '../services/dolarHistory';
 import { fetchLivePrices } from '../services/prices';
 import {
   Account,
@@ -44,6 +45,7 @@ interface AppState {
   categories: Category[];
   budgets: Budget[];
   dolar: DolarBlue;
+  dolarHistory: DolarHistory;
   livePrices: LivePricesState;
   addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
   updateAccount: (account: Account) => Promise<void>;
@@ -84,6 +86,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [livePrices, setLivePrices] = useState<LivePricesState>({ updatedAt: null, liveIds: [] });
   const dolar = useDolarBlue();
+  const dolarHistory = useDolarHistory();
 
   // Ref para que el ciclo de precios lea siempre las posiciones actuales sin
   // re-suscribir el intervalo en cada cambio.
@@ -330,6 +333,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       categories,
       budgets,
       dolar,
+      dolarHistory,
       livePrices,
       addAccount,
       updateAccount,
@@ -365,6 +369,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       categories,
       budgets,
       dolar,
+      dolarHistory,
       livePrices,
       addAccount,
       updateAccount,

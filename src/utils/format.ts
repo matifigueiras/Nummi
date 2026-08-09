@@ -57,6 +57,11 @@ export function monthKeyOf(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Último día del mes de `date`, en ISO yyyy-mm-dd */
+export function endOfMonthISO(date: Date): string {
+  return dateToISO(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+}
+
 /**
  * Acepta coma o punto como separador decimal ("15,5" / "0.048"); NaN si no
  * parsea. El string vacío da NaN a propósito: "sin completar" no es "cero".

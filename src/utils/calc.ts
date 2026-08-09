@@ -17,6 +17,14 @@ export function toArs(amount: number, currency: Currency, ventaRate: number): nu
   return currency === 'ARS' ? amount : amount * ventaRate;
 }
 
+/** Cotización de venta del blue para una fecha "yyyy-mm-dd" */
+export type RateResolver = (dateISO: string) => number;
+
+/** Resolver que ignora la fecha — para cuando alcanza con un tipo de cambio fijo */
+export function constantRate(rate: number): RateResolver {
+  return () => rate;
+}
+
 export interface MonthStats {
   income: number;
   expense: number;
@@ -25,15 +33,17 @@ export interface MonthStats {
 
 /**
  * Ingresos, gastos y ahorro de un mes, consolidados en ARS.
- * `key` es "yyyy-mm"; las transferencias quedan excluidas.
+ * `key` es "yyyy-mm"; las transferencias quedan excluidas. Cada movimiento en
+ * USD se convierte al blue de SU fecha, no al de hoy — así un mes pasado no
+ * cambia de valor según cuándo lo mires.
  */
-export function monthStats(movements: Movement[], key: string, ventaRate: number): MonthStats {
+export function monthStats(movements: Movement[], key: string, rateForDate: RateResolver): MonthStats {
   let income = 0;
   let expense = 0;
   for (const mov of movements) {
     if (!isCountedAsFlow(mov)) continue;
     if (monthKey(mov.date) !== key) continue;
-    const inArs = toArs(mov.amount, mov.currency, ventaRate);
+    const inArs = toArs(mov.amount, mov.currency, rateForDate(mov.date));
     if (mov.type === 'ingreso') income += inArs;
     else expense += inArs;
   }
@@ -56,13 +66,13 @@ export function savingsByMonth(
   movements: Movement[],
   endMonth: Date,
   count: number,
-  ventaRate: number,
+  rateForDate: RateResolver,
 ): MonthlySavings[] {
   const result: MonthlySavings[] = [];
   for (let offset = count - 1; offset >= 0; offset--) {
     const date = new Date(endMonth.getFullYear(), endMonth.getMonth() - offset, 1);
     const key = monthKeyOf(date);
-    result.push({ key, date, savings: monthStats(movements, key, ventaRate).savings });
+    result.push({ key, date, savings: monthStats(movements, key, rateForDate).savings });
   }
   return result;
 }
@@ -152,13 +162,13 @@ export function budgetProgress(
   budgets: Budget[],
   movements: Movement[],
   key: string,
-  ventaRate: number,
+  rateForDate: RateResolver,
 ): BudgetProgress[] {
   const spentByCategory = new Map<string, number>();
   for (const mov of movements) {
     if (!isCountedAsFlow(mov) || mov.type !== 'gasto') continue;
     if (monthKey(mov.date) !== key) continue;
-    const inArs = toArs(mov.amount, mov.currency, ventaRate);
+    const inArs = toArs(mov.amount, mov.currency, rateForDate(mov.date));
     spentByCategory.set(mov.category, (spentByCategory.get(mov.category) ?? 0) + inArs);
   }
 

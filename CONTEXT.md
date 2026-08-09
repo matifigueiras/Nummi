@@ -14,7 +14,8 @@ Objetivo de esta etapa: definir bien el diseño y el funcionamiento de la app. E
 - Orden de desarrollo: primero pensada y probada para navegador (Expo for Web), después adaptada/pulida para mobile (iOS/Android vía Expo)
 - Gráficos: librería de charts compatible con Expo/React Native (elegida: `react-native-svg` con componentes propios — más simple que una librería de charts completa)
 - Datos en vivo (auto-refresh cada 5 min y al volver a la pestaña/app):
-  - dolarapi.com — cotización blue
+  - dolarapi.com — cotización blue del día
+  - api.argentinadatos.com — historial diario del blue (desde 2011), para convertir movimientos de meses pasados al tipo de cambio que regía ese día, no al de hoy
   - CoinGecko — precios de cripto en USD
   - data912.com — acciones de EE.UU. (USD) y argentinas/CEDEARs (ARS)
 
@@ -50,7 +51,8 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Total por moneda cuando hay más de una cuenta de la misma
 - Navegador de mes (← →) como en Home: saldo, widgets y lista responden todos al mismo mes
 - Saldo mostrado al cierre del mes elegido (en el mes en curso = saldo de hoy)
-- Widgets del mes: resumen Ingresos/Gastos/Balance y gastos por categoría (barras)
+- Equivalente en la otra moneda: en el mes en curso, al blue de hoy; en un mes cerrado, al blue vigente al cierre de ese mes (etiquetado con la fecha, ej. "al blue del 31 jul")
+- Widgets del mes: resumen Ingresos/Gastos/Balance y gastos por categoría (barras) — usan la cotización histórica de cada movimiento, no una fija para todo el mes
 
 ### Patrimonio
 - Tracking de posiciones individuales:

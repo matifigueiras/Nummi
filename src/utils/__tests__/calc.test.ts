@@ -3,6 +3,7 @@ import {
   accountBalance,
   accountBalanceAt,
   budgetProgress,
+  constantRate,
   expensesByCategory,
   monthStats,
   positionPnlPct,
@@ -14,6 +15,7 @@ import {
 
 // Tipo de cambio fijo para que los tests no dependan de la cotización real
 const RATE = 1000;
+const rate = constantRate(RATE);
 
 function movement(over: Partial<Movement>): Movement {
   return {
@@ -35,7 +37,7 @@ describe('monthStats', () => {
       movement({ id: '1', type: 'ingreso', amount: 5000 }),
       movement({ id: '2', type: 'gasto', amount: 2000 }),
     ];
-    expect(monthStats(movements, '2026-08', RATE)).toEqual({
+    expect(monthStats(movements, '2026-08', rate)).toEqual({
       income: 5000,
       expense: 2000,
       savings: 3000,
@@ -48,12 +50,12 @@ describe('monthStats', () => {
       movement({ id: '2', type: 'ingreso', amount: 9999, date: '2026-07-31' }),
       movement({ id: '3', type: 'ingreso', amount: 8888, date: '2026-09-01' }),
     ];
-    expect(monthStats(movements, '2026-08', RATE).income).toBe(5000);
+    expect(monthStats(movements, '2026-08', rate).income).toBe(5000);
   });
 
   it('convierte los montos en USD a ARS al tipo de cambio', () => {
     const movements = [movement({ type: 'ingreso', currency: 'USD', amount: 100 })];
-    expect(monthStats(movements, '2026-08', RATE).income).toBe(100_000);
+    expect(monthStats(movements, '2026-08', rate).income).toBe(100_000);
   });
 
   // El bug que motivó las transferencias: una compra de dólares inflaba
@@ -64,7 +66,7 @@ describe('monthStats', () => {
       movement({ id: 'out', type: 'gasto', amount: 50_000, transferId: 't1' }),
       movement({ id: 'in', type: 'ingreso', currency: 'USD', amount: 50, transferId: 't1' }),
     ];
-    expect(monthStats(movements, '2026-08', RATE)).toEqual({
+    expect(monthStats(movements, '2026-08', rate)).toEqual({
       income: 100_000,
       expense: 0,
       savings: 100_000,
@@ -72,7 +74,18 @@ describe('monthStats', () => {
   });
 
   it('da cero cuando no hay movimientos', () => {
-    expect(monthStats([], '2026-08', RATE)).toEqual({ income: 0, expense: 0, savings: 0 });
+    expect(monthStats([], '2026-08', rate)).toEqual({ income: 0, expense: 0, savings: 0 });
+  });
+
+  // La razón de ser de RateResolver: cada movimiento se convierte al blue de
+  // SU fecha, no a uno fijo para todo el mes.
+  it('usa la cotización de la fecha de cada movimiento', () => {
+    const movements = [
+      movement({ id: '1', type: 'ingreso', currency: 'USD', amount: 100, date: '2026-08-05' }),
+      movement({ id: '2', type: 'ingreso', currency: 'USD', amount: 100, date: '2026-08-20' }),
+    ];
+    const byDate = (date: string) => (date === '2026-08-05' ? 1000 : 2000);
+    expect(monthStats(movements, '2026-08', byDate).income).toBe(100_000 + 200_000);
   });
 });
 
@@ -84,17 +97,17 @@ describe('savingsByMonth', () => {
   ];
 
   it('devuelve los meses del más viejo al más nuevo, terminando en el pedido', () => {
-    const result = savingsByMonth(movements, new Date(2026, 7, 1), 3, RATE);
+    const result = savingsByMonth(movements, new Date(2026, 7, 1), 3, rate);
     expect(result.map((r) => r.key)).toEqual(['2026-06', '2026-07', '2026-08']);
   });
 
   it('calcula el ahorro de cada mes y deja en cero los meses sin movimientos', () => {
-    const result = savingsByMonth(movements, new Date(2026, 7, 1), 3, RATE);
+    const result = savingsByMonth(movements, new Date(2026, 7, 1), 3, rate);
     expect(result.map((r) => r.savings)).toEqual([0, -3000, 6000]);
   });
 
   it('cruza el cambio de año hacia atrás', () => {
-    const result = savingsByMonth([], new Date(2026, 1, 1), 3, RATE);
+    const result = savingsByMonth([], new Date(2026, 1, 1), 3, rate);
     expect(result.map((r) => r.key)).toEqual(['2025-12', '2026-01', '2026-02']);
   });
 });
@@ -249,7 +262,7 @@ describe('budgetProgress', () => {
 
   it('calcula lo gastado y lo que queda', () => {
     const movements = [movement({ category: 'Comida', amount: 50_000 })];
-    const [result] = budgetProgress(budgets, movements, '2026-08', RATE);
+    const [result] = budgetProgress(budgets, movements, '2026-08', rate);
     expect(result.spent).toBe(50_000);
     expect(result.remaining).toBe(150_000);
     expect(result.status).toBe('ok');
@@ -257,12 +270,12 @@ describe('budgetProgress', () => {
 
   it('avisa cuando se acerca al límite (80%)', () => {
     const movements = [movement({ category: 'Comida', amount: 160_000 })];
-    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].status).toBe('cerca');
+    expect(budgetProgress(budgets, movements, '2026-08', rate)[0].status).toBe('cerca');
   });
 
   it('marca excedido y deja el sobrante en negativo', () => {
     const movements = [movement({ category: 'Comida', amount: 250_000 })];
-    const [result] = budgetProgress(budgets, movements, '2026-08', RATE);
+    const [result] = budgetProgress(budgets, movements, '2026-08', rate);
     expect(result.status).toBe('excedido');
     expect(result.remaining).toBe(-50_000);
     expect(result.ratio).toBeCloseTo(1.25, 5);
@@ -270,7 +283,7 @@ describe('budgetProgress', () => {
 
   it('suma los gastos en USD convertidos al blue', () => {
     const movements = [movement({ category: 'Comida', currency: 'USD', amount: 100 })];
-    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].spent).toBe(100_000);
+    expect(budgetProgress(budgets, movements, '2026-08', rate)[0].spent).toBe(100_000);
   });
 
   it('ignora ingresos, transferencias y otros meses', () => {
@@ -279,7 +292,7 @@ describe('budgetProgress', () => {
       movement({ id: '2', category: 'Comida', amount: 8888, transferId: 't1' }),
       movement({ id: '3', category: 'Comida', amount: 7777, date: '2026-07-05' }),
     ];
-    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].spent).toBe(0);
+    expect(budgetProgress(budgets, movements, '2026-08', rate)[0].spent).toBe(0);
   });
 
   // Las cuentas no importan: el presupuesto es del mes, no de una cuenta
@@ -288,7 +301,7 @@ describe('budgetProgress', () => {
       movement({ id: '1', category: 'Comida', accountId: 'caja-ars', amount: 30_000 }),
       movement({ id: '2', category: 'Comida', accountId: 'mp', amount: 20_000 }),
     ];
-    expect(budgetProgress(budgets, movements, '2026-08', RATE)[0].spent).toBe(50_000);
+    expect(budgetProgress(budgets, movements, '2026-08', rate)[0].spent).toBe(50_000);
   });
 
   it('ordena primero lo más consumido', () => {
@@ -300,7 +313,7 @@ describe('budgetProgress', () => {
       movement({ id: '1', category: 'Comida', amount: 10_000 }),
       movement({ id: '2', category: 'Salidas', amount: 90_000 }),
     ];
-    expect(budgetProgress(many, movements, '2026-08', RATE).map((b) => b.category)).toEqual([
+    expect(budgetProgress(many, movements, '2026-08', rate).map((b) => b.category)).toEqual([
       'Salidas',
       'Comida',
     ]);

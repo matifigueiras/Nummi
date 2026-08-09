@@ -1,6 +1,7 @@
 import {
   addDaysISO,
   dateToISO,
+  endOfMonthISO,
   formatDayLabel,
   formatPercent,
   monthKey,
@@ -63,6 +64,24 @@ describe('addDaysISO', () => {
 
   it('maneja el 29 de febrero de un año bisiesto', () => {
     expect(addDaysISO('2028-02-28', 1)).toBe('2028-02-29');
+  });
+});
+
+describe('endOfMonthISO', () => {
+  it('da el último día de un mes de 31', () => {
+    expect(endOfMonthISO(new Date(2026, 6, 15))).toBe('2026-07-31');
+  });
+
+  it('da el último día de un mes de 30', () => {
+    expect(endOfMonthISO(new Date(2026, 3, 1))).toBe('2026-04-30');
+  });
+
+  it('respeta febrero en año bisiesto', () => {
+    expect(endOfMonthISO(new Date(2028, 1, 5))).toBe('2028-02-29');
+  });
+
+  it('respeta febrero en año no bisiesto', () => {
+    expect(endOfMonthISO(new Date(2026, 1, 5))).toBe('2026-02-28');
   });
 });
 
