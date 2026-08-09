@@ -143,7 +143,13 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd: () => void }) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <Pressable style={styles.addButton} onPress={onAdd} hitSlop={6}>
+      <Pressable
+        style={styles.addButton}
+        onPress={onAdd}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Agregar ${title.toLowerCase()}`}
+      >
         <Feather name="plus" size={18} color={colors.ink} />
       </Pressable>
     </View>

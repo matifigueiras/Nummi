@@ -32,6 +32,9 @@ export function AccountPicker({ accounts, selectedId, onSelect, onAdd }: Props) 
             key={account.id}
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => onSelect(account.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`${account.name}, ${account.currency}`}
+            accessibilityState={{ selected: active }}
           >
             <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
               {account.name}
@@ -43,7 +46,12 @@ export function AccountPicker({ accounts, selectedId, onSelect, onAdd }: Props) 
         );
       })}
       {onAdd && (
-        <Pressable style={styles.addChip} onPress={onAdd}>
+        <Pressable
+          style={styles.addChip}
+          onPress={onAdd}
+          accessibilityRole="button"
+          accessibilityLabel="Agregar cuenta"
+        >
           <Feather name="plus" size={16} color={colors.secondary} />
         </Pressable>
       )}

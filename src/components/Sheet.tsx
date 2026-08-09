@@ -39,7 +39,13 @@ export function Sheet({ visible, onClose, title, children }: Props) {
         <View style={[styles.sheet, { paddingBottom: spacing.xxl + insets.bottom }]}>
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={8} style={styles.closeButton}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={8}
+              style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel={`Cerrar ${title}`}
+            >
               <Feather name="x" size={20} color={colors.secondary} />
             </Pressable>
           </View>

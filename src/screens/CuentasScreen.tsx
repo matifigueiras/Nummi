@@ -135,7 +135,12 @@ export function CuentasScreen() {
               ? 'Saldo disponible'
               : `Saldo al cierre de ${formatMonth(month).toLowerCase()}`}
           </Text>
-          <Pressable onPress={() => setAccountModal('edit')} hitSlop={8}>
+          <Pressable
+            onPress={() => setAccountModal('edit')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Editar cuenta"
+          >
             <Feather name="edit-2" size={14} color={styles.emptyIcon.color} />
           </Pressable>
         </View>
@@ -215,7 +220,12 @@ export function CuentasScreen() {
             placeholder="Buscar por descripción o categoría"
           />
           {isSearching && (
-            <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
+            <Pressable
+              onPress={() => setSearchQuery('')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Limpiar búsqueda"
+            >
               <Feather name="x" size={16} color={styles.emptyIcon.color} />
             </Pressable>
           )}

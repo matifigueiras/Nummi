@@ -34,6 +34,8 @@ export function RecurringList() {
             style={styles.addButton}
             onPress={() => setModal({ recurring: null })}
             hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar movimiento fijo"
           >
             <Feather name="plus" size={18} color={colors.ink} />
           </Pressable>

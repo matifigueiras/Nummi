@@ -34,6 +34,9 @@ export function TabBar({ state, navigation, onFabPress }: Props) {
         onPress={() => {
           if (!focused) navigation.navigate(routeName);
         }}
+        accessibilityRole="button"
+        accessibilityLabel={routeName}
+        accessibilityState={{ selected: focused }}
       >
         <Feather name={ICONS[routeName]} size={22} color={focused ? colors.ink : colors.muted} />
         <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>{routeName}</Text>
@@ -47,7 +50,12 @@ export function TabBar({ state, navigation, onFabPress }: Props) {
         {renderTab('Home', 0)}
         {renderTab('Cuentas', 1)}
         <View style={styles.tab}>
-          <Pressable style={styles.fab} onPress={onFabPress}>
+          <Pressable
+            style={styles.fab}
+            onPress={onFabPress}
+            accessibilityRole="button"
+            accessibilityLabel="Nuevo movimiento"
+          >
             <Feather name="plus" size={26} color={colors.inverse} />
           </Pressable>
         </View>

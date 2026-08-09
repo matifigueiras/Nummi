@@ -58,6 +58,7 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 ## 8. Detalles de UX transversales
 
 - **Separador de miles en vivo**: los campos de monto (`FormInput` con `thousands`) muestran "2.900.000" mientras se escribe; el valor guardado internamente sigue siendo el crudo ("2900000"), sin puntos, compatible con `parseAmount`
+- **Accesibilidad**: todos los botones de solo ícono (flechas de mes/día, cerrar sheet, FAB, agregar cuenta/fijo/posición/propiedad, editar cuenta/presupuestos, limpiar búsqueda, tabs) llevan `accessibilityRole="button"` + `accessibilityLabel`; los que ya tienen texto visible (filas, chips, botones con label) no necesitan uno aparte
 
 ### Patrimonio
 - Tracking de posiciones individuales:

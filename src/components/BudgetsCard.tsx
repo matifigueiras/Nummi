@@ -36,7 +36,13 @@ export function BudgetsCard({ progress, editable }: Props) {
           )}
         </View>
         {editable && (
-          <Pressable style={styles.editButton} onPress={() => setShowModal(true)} hitSlop={6}>
+          <Pressable
+            style={styles.editButton}
+            onPress={() => setShowModal(true)}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Editar presupuestos"
+          >
             <Feather name="edit-2" size={14} color={colors.secondary} />
           </Pressable>
         )}

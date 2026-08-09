@@ -106,7 +106,13 @@ export function DayStepper({ date, onChange }: { date: string; onChange: (iso: s
   const atToday = date >= todayISO();
   return (
     <View style={styles.dayRow}>
-      <Pressable style={styles.dayButton} onPress={() => onChange(addDaysISO(date, -1))} hitSlop={6}>
+      <Pressable
+        style={styles.dayButton}
+        onPress={() => onChange(addDaysISO(date, -1))}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel="Día anterior"
+      >
         <Feather name="chevron-left" size={18} color={colors.ink} />
       </Pressable>
       <Text style={styles.dayLabel}>{formatDayLabel(date)}</Text>
@@ -115,6 +121,9 @@ export function DayStepper({ date, onChange }: { date: string; onChange: (iso: s
         onPress={() => onChange(addDaysISO(date, 1))}
         disabled={atToday}
         hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel="Día siguiente"
+        accessibilityState={{ disabled: atToday }}
       >
         <Feather name="chevron-right" size={18} color={atToday ? colors.muted : colors.ink} />
       </Pressable>

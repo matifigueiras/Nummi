@@ -18,7 +18,13 @@ export function MonthNav({ month, onPrev, onNext, nextDisabled }: Props) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
-      <Pressable style={styles.button} onPress={onPrev} hitSlop={8}>
+      <Pressable
+        style={styles.button}
+        onPress={onPrev}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Mes anterior"
+      >
         <Feather name="chevron-left" size={20} color={colors.ink} />
       </Pressable>
       <Text style={styles.month}>{formatMonth(month)}</Text>
@@ -27,6 +33,9 @@ export function MonthNav({ month, onPrev, onNext, nextDisabled }: Props) {
         onPress={onNext}
         disabled={nextDisabled}
         hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Mes siguiente"
+        accessibilityState={{ disabled: nextDisabled }}
       >
         <Feather name="chevron-right" size={20} color={nextDisabled ? colors.muted : colors.ink} />
       </Pressable>
