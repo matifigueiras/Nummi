@@ -127,6 +127,7 @@ export function NewPositionModal({ visible, onClose, kind, position }: Props) {
 
       <Field label={`Precio de compra (${currency})`}>
         <FormInput
+          thousands
           value={buyPrice}
           onChangeText={setBuyPrice}
           placeholder="0"
@@ -137,6 +138,7 @@ export function NewPositionModal({ visible, onClose, kind, position }: Props) {
 
       <Field label={`Precio actual (${currency})`}>
         <FormInput
+          thousands
           value={currentPrice}
           onChangeText={setCurrentPrice}
           placeholder="0"

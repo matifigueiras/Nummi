@@ -54,6 +54,7 @@ export function BudgetsModal({ visible, onClose }: Props) {
         {expenseCategories.map((category) => (
           <Field key={category.id} label={category.name}>
             <FormInput
+              thousands
               value={draft[category.name] ?? ''}
               onChangeText={(value) => setDraft((prev) => ({ ...prev, [category.name]: value }))}
               placeholder="Sin presupuesto"

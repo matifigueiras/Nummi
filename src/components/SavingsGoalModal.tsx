@@ -32,6 +32,7 @@ export function SavingsGoalModal({ visible, onClose }: Props) {
       <Field label="Monto (ARS)">
         <FormInput
           big
+          thousands
           value={amount}
           onChangeText={setAmount}
           placeholder="0"

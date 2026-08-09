@@ -55,6 +55,10 @@ Home · Cuentas · (●) FAB · Patrimonio · Más
 - Widgets del mes: resumen Ingresos/Gastos/Balance y gastos por categoría (barras) — usan la cotización histórica de cada movimiento, no una fija para todo el mes
 - Buscador de movimientos (por descripción o categoría, sin distinguir mayúsculas ni acentos): mientras hay texto, la lista muestra resultados de TODOS los meses de esa cuenta; los widgets de arriba siguen hablando sólo del mes elegido
 
+## 8. Detalles de UX transversales
+
+- **Separador de miles en vivo**: los campos de monto (`FormInput` con `thousands`) muestran "2.900.000" mientras se escribe; el valor guardado internamente sigue siendo el crudo ("2900000"), sin puntos, compatible con `parseAmount`
+
 ### Patrimonio
 - Tracking de posiciones individuales:
   - Acciones y Cripto: ticker, cantidad, precio de compra, precio actual, **moneda de los precios** (CEDEARs/acciones locales cotizan en ARS)

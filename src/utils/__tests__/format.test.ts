@@ -4,9 +4,11 @@ import {
   endOfMonthISO,
   formatDayLabel,
   formatPercent,
+  formatThousandsLive,
   monthKey,
   monthKeyOf,
   parseAmount,
+  stripThousands,
   toUsd,
   todayISO,
 } from '../format';
@@ -109,6 +111,63 @@ describe('toUsd', () => {
   it('divide los montos en ARS por el tipo de cambio', () => {
     expect(toUsd(150_000, 'ARS', 1500)).toBe(100);
   });
+});
+
+describe('formatThousandsLive', () => {
+  it('no toca números menores a mil', () => {
+    expect(formatThousandsLive('100')).toBe('100');
+  });
+
+  it('agrupa de a tres desde la derecha', () => {
+    expect(formatThousandsLive('1000')).toBe('1.000');
+    expect(formatThousandsLive('2900000')).toBe('2.900.000');
+  });
+
+  it('deja la parte decimal sin tocar', () => {
+    expect(formatThousandsLive('1234,56')).toBe('1.234,56');
+    expect(formatThousandsLive('1000,5')).toBe('1.000,5');
+  });
+
+  it('devuelve vacío para el string vacío', () => {
+    expect(formatThousandsLive('')).toBe('');
+  });
+
+  it('ignora puntos que ya estuvieran en el crudo', () => {
+    // No debería pasar en el flujo normal, pero no debe romper
+    expect(formatThousandsLive('1.000')).toBe('1.000');
+  });
+});
+
+describe('stripThousands', () => {
+  it('saca los puntos de miles', () => {
+    expect(stripThousands('1.000')).toBe('1000');
+    expect(stripThousands('2.900.000')).toBe('2900000');
+  });
+
+  it('conserva la coma decimal', () => {
+    expect(stripThousands('1.234,56')).toBe('1234,56');
+  });
+
+  it('descarta letras y otros caracteres', () => {
+    expect(stripThousands('$1.000abc')).toBe('1000');
+  });
+
+  it('conserva sólo la primera coma', () => {
+    expect(stripThousands('12,34,56')).toBe('12,3456');
+  });
+
+  it('da vacío para el string vacío', () => {
+    expect(stripThousands('')).toBe('');
+  });
+});
+
+describe('formatThousandsLive y stripThousands son inversas', () => {
+  it.each(['0', '100', '1000', '2900000', '1234,56', '650000'])(
+    'stripThousands(formatThousandsLive(%s)) vuelve al valor original',
+    (raw) => {
+      expect(stripThousands(formatThousandsLive(raw))).toBe(raw);
+    },
+  );
 });
 
 describe('formatPercent', () => {

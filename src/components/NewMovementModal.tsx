@@ -225,6 +225,7 @@ export function NewMovementModal({ visible, onClose, movement, defaultAccountId 
       >
         <FormInput
           big
+          thousands
           value={amount}
           onChangeText={setAmount}
           placeholder="0"
@@ -237,6 +238,7 @@ export function NewMovementModal({ visible, onClose, movement, defaultAccountId 
         <Field label={`Entra (${toAccount.currency})`}>
           <FormInput
             big
+            thousands
             value={amountTo}
             onChangeText={setAmountTo}
             placeholder="0"

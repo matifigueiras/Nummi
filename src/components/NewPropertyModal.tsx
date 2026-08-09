@@ -138,6 +138,7 @@ function AmountField({
     <Field label={label}>
       <View style={styles.row}>
         <FormInput
+          thousands
           style={styles.input}
           value={amount}
           onChangeText={onAmount}

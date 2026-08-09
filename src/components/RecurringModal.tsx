@@ -113,6 +113,7 @@ export function RecurringModal({ visible, onClose, recurring }: Props) {
       <Field label={account ? `Monto (${account.currency})` : 'Monto'}>
         <FormInput
           big
+          thousands
           value={amount}
           onChangeText={setAmount}
           placeholder="0"

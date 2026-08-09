@@ -92,6 +92,7 @@ export function AccountModal({ visible, onClose, account, accountCount }: Props)
 
       <Field label="Saldo inicial">
         <FormInput
+          thousands
           value={initialBalance}
           onChangeText={setInitialBalance}
           placeholder="0"

@@ -3,7 +3,13 @@ import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from 're
 import { Feather } from '@expo/vector-icons';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
-import { addDaysISO, formatDayLabel, todayISO } from '../utils/format';
+import {
+  addDaysISO,
+  formatDayLabel,
+  formatThousandsLive,
+  stripThousands,
+  todayISO,
+} from '../utils/format';
 
 
 // Piezas compartidas por los formularios de los sheets (movimiento, posición,
@@ -22,16 +28,24 @@ export function Field({ label, children }: { label: string; children: React.Reac
 interface InputProps extends TextInputProps {
   /** Tipografía grande para montos */
   big?: boolean;
+  /** Separador de miles en vivo mientras se escribe (para campos de monto) */
+  thousands?: boolean;
 }
 
-export function FormInput({ big, style, ...rest }: InputProps) {
+export function FormInput({ big, thousands, style, value, onChangeText, ...rest }: InputProps) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const displayValue = thousands && typeof value === 'string' ? formatThousandsLive(value) : value;
+  const handleChangeText = thousands
+    ? (text: string) => onChangeText?.(stripThousands(text))
+    : onChangeText;
   return (
     <TextInput
       style={[big ? styles.bigInput : styles.input, style]}
       placeholderTextColor={colors.muted}
       {...rest}
+      value={displayValue}
+      onChangeText={handleChangeText}
     />
   );
 }

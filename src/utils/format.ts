@@ -72,6 +72,39 @@ export function parseAmount(raw: string): number {
   return Number(normalized);
 }
 
+/**
+ * Agrega el separador de miles mientras se escribe un monto ("2900000" →
+ * "2.900.000"). Sólo toca la parte entera; la parte decimal (lo que sigue a
+ * la primera coma) queda tal cual, sin forzar cantidad de dígitos.
+ */
+export function formatThousandsLive(raw: string): string {
+  const [intPart, ...rest] = raw.split(',');
+  const decPart = rest.length > 0 ? ',' + rest.join('') : '';
+  const digitsOnly = intPart.replace(/\D/g, '');
+  if (digitsOnly === '') return decPart;
+  const grouped = digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return grouped + decPart;
+}
+
+/**
+ * Inversa de `formatThousandsLive`: a partir de lo que el usuario ve/edita
+ * en el input formateado, recupera el valor "crudo" que espera `parseAmount`
+ * (sólo dígitos y, como mucho, una coma decimal).
+ */
+export function stripThousands(text: string): string {
+  const withoutDots = text.replace(/\./g, '');
+  let result = '';
+  let sawComma = false;
+  for (const ch of withoutDots) {
+    if (ch >= '0' && ch <= '9') result += ch;
+    else if (ch === ',' && !sawComma) {
+      result += ch;
+      sawComma = true;
+    }
+  }
+  return result;
+}
+
 /** Convierte un monto a USD usando el blue (venta) como referencia */
 export function toUsd(amount: number, currency: Currency, ventaRate: number): number {
   return currency === 'USD' ? amount : amount / ventaRate;
