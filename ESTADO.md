@@ -156,17 +156,43 @@ necesita. Mati la **eliminó del dashboard** (Settings → API → Secret keys �
 Delete, no sólo regenerar) el mismo día. Confirmado cerrado, no queda nada
 pendiente acá.
 
+### Verificación exhaustiva de pantallas (2026-08-09, mismo día)
+Se ejercitó cada operación de escritura contra la base real (crear con datos
+de prueba, confirmar en pantalla, y borrar/revertir para no ensuciar los
+datos reales de Mati):
+- **Transferencias** (`addTransfer`): Caja ARS → Caja USD, las dos patas
+  aparecieron con el mismo `transfer_id`; `deleteMovement` sobre una pata
+  borró las dos.
+- **Posiciones** (`addPosition`/`updatePosition`/`deletePosition`): cripto de
+  prueba creada, editada (confirma lectura) y borrada.
+- **Propiedades** (`addProperty`/`updateProperty`/`deleteProperty`): mismo
+  ciclo, ok. Nota aparte (no es bug de Supabase): el form de propiedades
+  bloquea "Agregar" si "Alquiler mensual" queda vacío en vez de tratarlo como
+  0 — hay que escribir algo ahí aunque sea 0, comportamiento previo a esta
+  sesión, no tocado.
+- **Movimientos fijos** (`addRecurring`/`updateRecurring`/`deleteRecurring`):
+  mismo ciclo, ok.
+- **Presupuestos** (`setBudget`): crear con monto y borrar con monto 0, ok.
+- **Categorías** (`addCategory`/`deleteCategory`): mismo ciclo, ok.
+- **Meta de ahorro** (`setSavingsGoal`/`getSavingsGoal`): cambiada y
+  revertida, con lectura de vuelta confirmando el valor guardado.
+Con esto las 25 operaciones de `DataRepository` quedaron probadas contra la
+base real al menos una vez. Sin errores de consola en ningún paso.
+
+**Nota de testing (no producto)**: el `Sheet` (modal genérico de
+`src/components/Sheet.tsx`) tiene una animación de fade que a veces hace que
+una captura de pantalla tomada inmediatamente después de un click muestre el
+estado previo un instante — no es un bug de la app, sólo hay que esperar
+~1s antes de asumir que un modal no abrió. Igual con `ConfirmDeleteButton`:
+si pasan varios segundos entre el primer y el segundo tap (por hacer otras
+llamadas de por medio) el estado "armado" se resetea solo — hacer los dos
+taps seguidos.
+
 ### Pendiente / a medio hacer
 - **Deep link en nativo**: `detectSessionInUrl` está desactivado en nativo a
   propósito (no aplica) pero el manejo del deep link del magic link en
   iOS/Android (esquema de URL, listener de `Linking`) no está armado — y no
   se puede probar igual, dado el bloqueo de Xcode (ver sección 2).
-- **Probar el resto de las pantallas contra la base real**: lo verificado
-  fue login, migración, y alta/baja de un movimiento. Falta ejercitar a
-  fondo Cuentas (crear cuenta, transferencias), Patrimonio (posiciones,
-  propiedades), presupuestos, categorías, fijos y meta de ahorro contra
-  Supabase (antes sólo se probaron contra `LocalStorageRepository`, la
-  lógica es la misma pero vale la pena confirmar).
 
 ### Trackeo de tareas
 Las 5 tasks de este hilo (`#1`-`#5`) están todas **completed**: instalar
