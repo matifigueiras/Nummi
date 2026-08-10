@@ -49,7 +49,7 @@ export function NewPropertyModal({ visible, onClose, property }: Props) {
     }
   }, [visible, editing]);
 
-  const parsedRent = parseAmount(rent);
+  const parsedRent = rent.trim() === '' ? 0 : parseAmount(rent);
   const parsedExpenses = expenses.trim() === '' ? 0 : parseAmount(expenses);
   const parsedValue = parseAmount(value);
   const valid =

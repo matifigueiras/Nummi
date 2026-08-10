@@ -166,10 +166,11 @@ datos reales de Mati):
 - **Posiciones** (`addPosition`/`updatePosition`/`deletePosition`): cripto de
   prueba creada, editada (confirma lectura) y borrada.
 - **Propiedades** (`addProperty`/`updateProperty`/`deleteProperty`): mismo
-  ciclo, ok. Nota aparte (no es bug de Supabase): el form de propiedades
-  bloquea "Agregar" si "Alquiler mensual" queda vacío en vez de tratarlo como
-  0 — hay que escribir algo ahí aunque sea 0, comportamiento previo a esta
-  sesión, no tocado.
+  ciclo, ok. Se encontró y arregló un bug de UI (no de Supabase, preexistente):
+  `NewPropertyModal.tsx` bloqueaba "Agregar" si "Alquiler mensual" quedaba
+  vacío, porque `parsedRent` no tenía el mismo fallback a 0 que
+  `parsedExpenses`. Corregido (`rent.trim() === '' ? 0 : parseAmount(rent)`)
+  y reverificado: ahora se puede guardar una propiedad sin tocar ese campo.
 - **Movimientos fijos** (`addRecurring`/`updateRecurring`/`deleteRecurring`):
   mismo ciclo, ok.
 - **Presupuestos** (`setBudget`): crear con monto y borrar con monto 0, ok.
