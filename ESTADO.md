@@ -1,0 +1,359 @@
+# Estado del proyecto Nummi
+
+> Empezó como snapshot de la sesión del 2026-08-09 (commit `132ba45`, 116
+> tests, working tree limpio). Desde ahí Mati pidió actualizarlo **en el
+> momento** cada vez que algo queda confirmado, no sólo al cierre de sesión
+> — así que las secciones 1-5 son la foto de ese día y la sección 0 es el
+> registro vivo de lo que se está construyendo ahora. Ver [CONTEXT.md](CONTEXT.md)
+> para la spec funcional completa.
+
+## 0. Migración a Supabase — COMPLETA Y VERIFICADA
+
+Arrancó el 2026-08-09 en la misma sesión, a pedido de Mati ("quiero conectar
+la base de datos, me recomendaron supabase"). Eligió **multi-dispositivo con
+login por magic link** (no single-user sin auth) cuando se le preguntó.
+**Terminó ese mismo día**: login, migración de datos y CRUD contra la base
+real, todo verificado en el navegador (ver "Verificación end-to-end" más
+abajo). Nummi ya no usa AsyncStorage/localStorage como fuente de verdad —
+`repository` (`src/data/repository.ts`) es `SupabaseRepository`.
+
+### Verificación end-to-end (2026-08-09, en el navegador real)
+- **Login con código funcionó de punta a punta**: mandé el código, Mati lo
+  pegó (`96189311` — 8 dígitos, no 6, ver nota de OTP length abajo), la app
+  entró a Home con sesión real. **Persiste**: refresh completo de página
+  (`navigate` a la misma URL) mantuvo la sesión y los datos sin volver al
+  login.
+- **Datos reales migrados**: al loguearse, `migrateLocalDataToSupabase` subió
+  los datos que Mati ya había cargado en el device (Sueldo $2.900.000,
+  Alquiler depto $650.000, Supermercado Jumbo $172.000, Carga SUBE $20.000,
+  Café de especialidad $9.500, cuentas Caja ARS/Caja USD, categorías, meta de
+  ahorro $900k) — se vieron con esos montos exactos en Home/Cuentas después
+  del login, no datos de ejemplo.
+- **Escritura real confirmada**: cargué un movimiento de prueba ($1, "TEST
+  supabase (borrar)") desde el modal de Nuevo Movimiento → Gastos pasó de
+  $885.710 a $885.711 en Home, apareció en la lista de Cuentas con la
+  categoría "Ahorro" nueva. Lo borré después (`deleteMovement`, con el botón
+  de confirmación en dos pasos) → los números volvieron a los reales y
+  "Ahorro" desapareció de "Gastos por categoría". Confirma `addMovement` y
+  `deleteMovement` funcionando contra Postgres real, con RLS.
+- **Sin errores de consola** en ningún paso de esto.
+
+### Dos problemas reales encontrados y resueltos en el camino
+1. **Gmail invalida los magic links por prefetch**: Mati usa Gmail, que
+   escanea/prefetchea los links de los mails por seguridad — eso consume el
+   token de un solo uso antes del click real (`otp_expired` en dos intentos
+   seguidos). Es un problema conocido de Supabase + Gmail, no un bug de acá.
+   **Fix**: se cambió el login a pedir el código de la OTP en vez de
+   depender del link (`AuthContext.verifyCode` → `supabase.auth.verifyOtp({
+   email, token, type: 'email' })`; `LoginScreen` tiene un segundo paso con
+   input de código). El link se sigue mandando como alternativa.
+2. **El servicio de mail default de Supabase no deja editar plantillas ni
+   manda más que un puñado de mails por hora** (`email rate limit
+   exceeded`) — es sólo para pruebas rápidas, no service real. **Fix**: se
+   conectó **Resend** como SMTP propio (Authentication → Emails → SMTP
+   Settings: host `smtp.resend.com`, puerto 465, user `resend`, password =
+   API key de Resend, sender `onboarding@resend.dev`). Con eso se desbloqueó
+   editar la plantilla de "Magic link or OTP" y se sacó el rate limit.
+   **Nota**: el largo de la OTP en este proyecto resultó ser de **8
+   dígitos**, no 6 como asume la config default de Supabase que yo tenía en
+   la cabeza — el input de código en `LoginScreen` se ajustó para aceptar
+   cualquier largo ≥6 en vez de exactamente 6.
+
+### Bug encontrado y arreglado antes de dar por cerrado el cutover
+`SupabaseRepository.resetData()` borraba **cuentas y categorías** además de
+lo transaccional — a diferencia de la versión local, que reseedeaba
+cuentas/categorías demo después de "resetear". Eso habría dejado al usuario
+sin nada para elegir al cargar el próximo movimiento (bug real, no sólo
+copy). Se corrigió para conservar cuentas y categorías, sólo borra
+movimientos/fijos/posiciones/propiedades/presupuestos/meta. El copy del
+modal en `MasScreen` ("Restablecer datos", antes "Restablecer datos de
+ejemplo") y el footer ("Sincronizado con tu cuenta", antes "Datos guardados
+en este dispositivo") se actualizaron para reflejar esto con precisión. Se
+sacó también el item "Conectar almacenamiento (Pronto)" de la lista, porque
+ya está conectado.
+
+### Detalle técnico (para referencia futura)
+- **Esquema SQL completo** en [supabase/schema.sql](supabase/schema.sql): 8
+  tablas (`accounts`, `categories`, `recurring_movements`,
+  `recurring_applied_months`, `movements`, `positions`, `properties`,
+  `budgets`, `savings_goal`), cada una con `user_id` + Row Level Security.
+  Corrido por Mati en el SQL Editor y confirmado funcionando (las escrituras
+  de la verificación end-to-end de arriba pasaron por estas tablas y sus
+  policies de RLS).
+- **Cliente de Supabase** (`src/services/supabase.ts`): instalado
+  `@supabase/supabase-js` + `react-native-url-polyfill` + `expo-linking`,
+  cliente configurado con AsyncStorage para persistir sesión,
+  `detectSessionInUrl` sólo en web, auto-refresh de token pausado/reanudado
+  con AppState en nativo. Probado: la app arranca sin errores de consola con
+  las env vars reales (confirma que lee `.env` bien).
+- **`AuthContext`** (`src/store/AuthContext.tsx`) + **`LoginScreen`**
+  (`src/screens/LoginScreen.tsx`): pantalla de email → código de acceso, sin
+  contraseña (ver nota sobre por qué código y no sólo link, arriba). Expone
+  `signInWithEmail` (manda el código) y `verifyCode` (lo confirma vía
+  `supabase.auth.verifyOtp`). **Probado de punta a punta con sesión real**:
+  ver "Verificación end-to-end" arriba.
+- **Gate de autenticación en `App.tsx`**: sin sesión → `LoginScreen`; con
+  sesión → los tabs de siempre (`AppProvider` sólo se monta autenticado, para
+  cuando dependa de saber qué usuario es). Estado de carga inicial con
+  spinner mientras se resuelve si había sesión guardada. Probado: sin sesión
+  se ve el login, no los tabs.
+- **`MasScreen`** actualizado: el email real de la sesión reemplaza el
+  "Mati" / mail hardcodeado de antes; nuevo botón de cerrar sesión (ícono
+  `log-out`) junto al perfil.
+- **Mapeo DB↔app** (`src/data/supabaseMappers.ts`): funciones puras
+  `xFromDb`/`xToDb` para las 8 entidades (snake_case de Postgres ↔ camelCase
+  de `src/types.ts`), incluyendo el caso `null`↔`undefined` de
+  `recurringId`/`transferId` en movimientos y el default `{currency:'ARS',
+  amount:0}` cuando todavía no hay fila de meta de ahorro. **Testeado**: 12
+  tests nuevos en `src/data/__tests__/supabaseMappers.test.ts`, todos
+  pasando (`npx jest` → 128/128 tests, 7 suites, sobre el total del
+  proyecto).
+- **`SupabaseRepository`** (`src/data/SupabaseRepository.ts`): implementación
+  completa de `DataRepository` contra Supabase — es el export activo de
+  `src/data/repository.ts` (cutover hecho). Cubre las 25 operaciones de la
+  interfaz, con las mismas reglas de negocio que `LocalStorageRepository`:
+  `deleteAccount`/`deleteMovement` limpian la pata hermana de una
+  transferencia buscando por `transfer_id` (el `ON DELETE CASCADE` de
+  `account_id` no la alcanza si vive en otra cuenta), `addTransfer` inserta
+  la pata "out" primero y reusa su `id` de Postgres como `transfer_id`
+  compartido (sin sumar una lib de uuids), `deleteRecurring` confía en el
+  `ON DELETE CASCADE` de `recurring_applied_months`, `updateCategory`
+  arrastra el rename a movimientos/fijos/presupuestos, y `resetData`
+  conserva cuentas y categorías (ver "Bug encontrado y arreglado" arriba).
+  Typecheck limpio. **No tiene tests directos** (mismo criterio que
+  `dolar.ts`/`prices.ts`: es una capa fina que sólo hace red, la lógica que
+  vale la pena testear ya está cubierta en `supabaseMappers.test.ts`) — la
+  verificación real fue end-to-end en el navegador contra la base real (ver
+  arriba): `addMovement` y `deleteMovement` confirmados con un movimiento de
+  prueba, lecturas de las 8 tablas confirmadas al mostrar los datos
+  migrados.
+- **`migrateLocalData.ts`** (`migrateLocalDataToSupabase`): sube lo que haya
+  en el AsyncStorage de este dispositivo (de la época pre-Supabase) a la
+  cuenta recién logueada, remapeando ids string viejos a los `uuid` nuevos
+  (cuentas primero, después fijos y movimientos que las referencian,
+  agrupando las patas de transferencia bajo el `id` nuevo de una de ellas).
+  Dos guardas: si el usuario ya tiene cuentas en Supabase no hace nada (evita
+  duplicar en logins siguientes o en un dispositivo nuevo), y si este
+  dispositivo nunca tuvo AsyncStorage con datos reales, tampoco toca nada
+  (evita subir los datos de ejemplo que `LocalStorageRepository` sembraría
+  solo, al leerlos). Se llama una vez por sesión desde `App.tsx`
+  (`AuthedApp`), con un spinner mientras corre y sin bloquear el login si
+  falla (sólo loguea el error en consola). **Verificado con datos reales**:
+  ver "Verificación end-to-end" arriba — subió el sueldo, alquiler,
+  supermercado, etc. que ya estaban cargados localmente.
+- **Cutover hecho y verificado**: `src/data/repository.ts` exporta
+  `new SupabaseRepository()` en vez de `new LocalStorageRepository()` — la
+  app entera (todas las pantallas, vía `DataRepository`) habla con Supabase.
+  `LocalStorageRepository` sigue existiendo (exportada) porque
+  `migrateLocalData.ts` la usa para leer los datos viejos.
+
+### Decisión de seguridad tomada en esta sesión — RESUELTA
+Mati pegó por error la **secret key** (`sb_secret_...`, equivalente al
+`service_role key` — acceso total a la base, saltea RLS) en el chat, además
+de la publishable key que sí correspondía. **No se guardó en ningún archivo
+del proyecto ni se usó** — esta arquitectura (cliente + anon key + RLS) no la
+necesita. Mati la **eliminó del dashboard** (Settings → API → Secret keys →
+Delete, no sólo regenerar) el mismo día. Confirmado cerrado, no queda nada
+pendiente acá.
+
+### Pendiente / a medio hacer
+- **Deep link en nativo**: `detectSessionInUrl` está desactivado en nativo a
+  propósito (no aplica) pero el manejo del deep link del magic link en
+  iOS/Android (esquema de URL, listener de `Linking`) no está armado — y no
+  se puede probar igual, dado el bloqueo de Xcode (ver sección 2).
+- **Probar el resto de las pantallas contra la base real**: lo verificado
+  fue login, migración, y alta/baja de un movimiento. Falta ejercitar a
+  fondo Cuentas (crear cuenta, transferencias), Patrimonio (posiciones,
+  propiedades), presupuestos, categorías, fijos y meta de ahorro contra
+  Supabase (antes sólo se probaron contra `LocalStorageRepository`, la
+  lógica es la misma pero vale la pena confirmar).
+
+### Trackeo de tareas
+Las 5 tasks de este hilo (`#1`-`#5`) están todas **completed**: instalar
+cliente, login, `SupabaseRepository`, migración de datos, cutover +
+verificación end-to-end. La migración a Supabase está terminada.
+
+## 1. Funcionalidades confirmadas y funcionando
+
+Todo lo de abajo fue **verificado a mano en el navegador** (Expo Web,
+`npm run web`), no solo por tests. Cuando dice "probado: X" es porque se
+hicieron las acciones concretas descriptas, no una inferencia.
+
+### Home
+- Navegador de mes, saludo contextual, cotización blue con indicador de
+  actualizado/desactualizado.
+- Grid de stats (Ingresos/Gastos/Ahorro/Meta) + donut Ingresos vs. Gastos.
+- **Presupuestos**: tarjeta con avance por categoría (ok/cerca/excedido).
+  Probado: cargué 3 presupuestos (Vivienda $600k, Comida $200k, Transporte
+  $100k) y vi los tres estados a la vez con ícono+texto+color.
+- **Gráfico de ahorro por mes** (últimos 6): columnas verde/naranja sobre
+  línea de cero, tap por mes. Probado con un mes negativo inyectado a mano.
+- Meta de ahorro editable desde el tile (% real, sin recortar a 100%).
+
+### Cuentas
+- **Varias cuentas** (no solo ARS/USD fijas): alta/edición/borrado. Probado:
+  creé "Mercado Pago" (ARS, saldo inicial $340.000), apareció el total
+  combinado por moneda, y lo volví a borrar verificando que sus movimientos
+  se fueran con ella sin dejar huérfanos.
+- **Transferencias entre cualquier par de cuentas**: mismo monto si son la
+  misma moneda, tipo de cambio implícito si no. Probado: transferí $100.000
+  de Caja ARS a Mercado Pago y el total en pesos no se movió (correcto).
+- Navegador de mes que gobierna TODA la pantalla (saldo, widgets, lista) —
+  ya no hay dos alcances mezclados como al principio.
+- Saldo al cierre del mes elegido (no siempre "hoy"). Equivalente en la otra
+  moneda usa el blue **de esa fecha**, no el de hoy (ver sección de cotización
+  histórica abajo).
+- **Buscador de movimientos**: por descripción o categoría, sin distinguir
+  mayúsculas ni acentos. Mientras hay texto, busca en TODOS los meses de la
+  cuenta (los widgets de arriba se quedan en el mes elegido). Probado:
+  "alquiler" devolvió los 4 meses donde aparece; "cafe" (sin tilde) encontró
+  "Café de especialidad"; "gimnasio" dio 0 resultados con el mensaje correcto.
+
+### Patrimonio
+- Acciones/cripto con ticker, cantidad, moneda de los precios (ARS o USD —
+  para CEDEARs/acciones locales), precio compra/actual, P&L%.
+- **Precios en vivo**: CoinGecko (cripto) y data912 (acciones US y
+  argentinas), refresh cada 5 min. Probado: los precios del mock cambiaron
+  a valores reales de mercado al cargar; confirmé que SPY (ETF, no está en
+  data912) se queda con el precio cargado a mano sin punto verde.
+- Propiedades con cada monto en su propia moneda (valor USD, alquiler ARS
+  es el caso típico), yield anual automático.
+
+### Más
+- Tema claro/oscuro/sistema, persistido.
+- **Movimientos fijos** (sueldo, alquiler, suscripciones): se generan solos
+  al abrir la app cuando llega el día. Probado el ciclo completo: creé un
+  gasto "Gimnasio" día 4 (ya pasado), se registró solo al instante; recargué
+  varias veces sin que se duplicara; lo borré a mano, recargué, y no
+  reapareció ese mes (pero el fijo sigue definido para el mes siguiente).
+- **Categorías propias**: alta/renombrado/borrado. Renombrar arrastra
+  movimientos+fijos+presupuestos; borrar solo deja de ofrecerla (el
+  histórico conserva el nombre). Probado: creé "Mascota", apareció al
+  instante en el selector de categorías del formulario de movimiento.
+- **Exportar a CSV** (movimientos/posiciones/propiedades): separador `;`,
+  coma decimal, gastos en negativo, BOM UTF-8. Probado: intercepté la
+  descarga real en el navegador y confirmé 39 filas, orden por fecha, y los
+  primeros 3 bytes del archivo (`EF BB BF`) confirmando el BOM.
+- Meta de ahorro, restablecer datos de ejemplo.
+
+### Transversal
+- **Persistencia local** (AsyncStorage/localStorage) con 4 migraciones de
+  formato (v1→v2→v3→v4) probadas sin pérdida de datos en cada salto.
+- **Cotización histórica del blue**: cada movimiento en USD de un mes
+  cerrado se convierte al tipo de cambio de SU fecha, no al de hoy. Fuente:
+  `api.argentinadatos.com` (histórico diario desde 2011, 5695 registros).
+  Probado: el equivalente de julio pasó de "US$3.541 al blue de hoy" a
+  "US$3.462 al blue del 31 jul" (blue real de esa fecha: $1.560, confirmado
+  leyendo el caché en localStorage).
+- **Separador de miles en vivo** en todos los campos de monto (no en
+  cantidad de posición). Probado tipeo normal, coma decimal, y un backspace
+  simulado a nivel nativo (ver limitación conocida en sección 4).
+- **Accesibilidad**: todos los botones de solo ícono tienen
+  `accessibilityRole="button"` + `accessibilityLabel`. Verificado leyendo
+  los atributos `aria-label`/`role` reales en el DOM.
+- Edición y borrado (con confirmación en dos pasos) en movimientos,
+  posiciones, propiedades, cuentas, categorías y fijos.
+- 116 tests unitarios sobre toda la lógica de cálculo pura (`src/utils/`),
+  0 fallando.
+
+## 2. Pendiente de probar o a medio hacer
+
+- **Nada a medio hacer**: el working tree está limpio, sin código sin
+  commitear. Cada feature de la lista de arriba está completa end-to-end.
+- **iOS/Android real: sigue sin probarse.** Esta Mac no tiene Xcode
+  instalado (solo Command Line Tools), así que nunca se pudo abrir el
+  simulador de iPhone. Hice un pase de ajustes "a ciegas" para viewport
+  angosto (safe area en `Sheet`, ícono de lápiz en vez de texto largo en
+  el tile de meta) pero **nadie tocó la app en un dispositivo o simulador
+  real todavía**. Esto sigue siendo el hueco de verificación más grande.
+- **Backend real (Supabase)**: hecho y verificado — migración completa el
+  2026-08-09, ver sección 0 arriba para el detalle. `repository` ya no es
+  `LocalStorageRepository`. Google Sheets sigue descartado como opción (no
+  cambió esa decisión).
+
+## 3. En qué se estaba trabajando ahora mismo
+
+**La migración a Supabase (sección 0) se completó y verificó en la misma
+sesión que arrancó.** Al momento de este snapshot original (2026-08-09,
+commit `132ba45`) no había nada en curso — esa tanda de trabajo (4 mejoras:
+cotización histórica, buscador, formateo de miles, accesibilidad) se había
+completado y commiteado en su totalidad. La migración a Supabase es trabajo
+nuevo, **todavía sin commitear** (son muchos archivos nuevos: `.env`,
+`supabase/`, `src/services/supabase.ts`, `src/store/AuthContext.tsx`,
+`src/screens/LoginScreen.tsx`, `src/data/SupabaseRepository.ts`,
+`src/data/supabaseMappers.ts`, `src/data/migrateLocalData.ts`, cambios en
+`App.tsx`/`MasScreen.tsx`/`repository.ts` — revisar `git status` antes de
+commitear, y no incluir `.env`, que ya está en `.gitignore`).
+
+Si algo quedó "caliente" de la tanda anterior (la del commit `132ba45`) es
+el conocimiento fresco de estos archivos (por si hay que iterar sobre ellos):
+
+- `src/services/dolarHistory.ts` + `src/utils/dolarHistoryLookup.ts`
+  (búsqueda del historial separada del hook para poder testearla)
+- `src/utils/calc.ts` (monthStats/savingsByMonth/budgetProgress ahora
+  reciben un `RateResolver`, no un número fijo — `constantRate()` cubre
+  los casos que no necesitan variar por fecha)
+- `src/utils/search.ts` (`searchMovements`, normaliza con NFD para
+  ignorar acentos — **ver limitación de encoding en sección 4**)
+- `src/screens/CuentasScreen.tsx` (el archivo más grande y con más lógica
+  mezclada: mes, cuenta, saldo histórico, búsqueda, todo junto)
+- `src/utils/format.ts` (`formatThousandsLive`/`stripThousands`, son
+  funciones inversas entre sí, hay un test que lo verifica como propiedad)
+- Pasada de accesibilidad tocó ~10 archivos de componentes agregando
+  `accessibilityLabel`/`accessibilityRole`/`accessibilityState`
+
+## 4. Bugs conocidos y limitaciones detectadas
+
+- **El simulador de teclado del panel de pruebas (Browser pane) no dispara
+  un backspace real.** Al probar el formateo en vivo de montos, presionar
+  Backspace vía la herramienta de automatización no modificaba el valor del
+  input (verificado leyendo `selectionStart`/`selectionEnd`/`value` del DOM
+  antes y después: no cambiaban). Tuve que simular un backspace nativo real
+  inyectando el evento `input` a mano por JS para confirmar que el código
+  SÍ funciona correctamente. **Esto es una limitación de la herramienta de
+  testing, no un bug de la app** — pero significa que cualquier interacción
+  de teclado que dependa de Backspace/Delete debería re-verificarse con
+  cuidado si se prueba de nuevo por este camino (typing hacia adelante con
+  `type` sí funciona bien).
+- **Encoding de caracteres Unicode en `src/utils/search.ts`**: al escribir
+  ese archivo, el regex de diacríticos (`/[̀-ͯ]/g`) terminó en el
+  código fuente como los caracteres Unicode combinados literales en vez de
+  la forma escapada `̀`-`ͯ`. Es **funcionalmente idéntico**
+  (verificado a nivel de bytes UTF-8 y con 7 tests que pasan, incluida
+  búsqueda con y sin tilde), pero si se abre ese archivo en un editor y se
+  ve raro/con caracteres invisibles pegados al `[` y al `-`, es por esto,
+  no es corrupción. Si molesta, se puede reescribir a mano con
+  `̀`/`ͯ` explícito — no es urgente.
+- **Sin probar en mobile nativo** (ver sección 2) — todo el trabajo de esta
+  sesión fue verificado en Expo Web. Layout, gestos, teclado nativo y
+  rendimiento en iOS/Android son terreno no verificado.
+- El equivalente en dólares de un saldo (Cuentas) usa el blue de **cierre
+  de mes** como aproximación — no hay conversión movimiento-por-movimiento
+  para el saldo acumulado en sí (sí la hay para ingresos/gastos/presupuestos
+  del mes, que si convierten cada movimiento a su propia fecha). Es una
+  simplificación consciente, no un bug, pero vale tenerla presente si se
+  pide más precisión ahí.
+
+## 5. Próximos pasos sugeridos
+
+Con Supabase cerrado (sección 0), la lista queda así:
+
+1. **Commitear la migración a Supabase** — está toda la funcionalidad
+   verificada pero sin commitear todavía (ver sección 3 para la lista de
+   archivos).
+2. Instalar Xcode y probar en el simulador de iOS — sigue pendiente, quedó
+   en segundo plano durante la migración a Supabase, no porque Mati lo haya
+   descartado.
+3. Ejercitar más pantallas contra la base real (sección 0, "Pendiente").
+4. Si se retoma edición de `src/utils/search.ts`, considerar limpiar el
+   encoding del regex de diacríticos (cosmético, ver sección 4).
+5. Antes de cualquier commit nuevo: correr `npx tsc --noEmit && npx jest`.
+
+## Referencia rápida
+
+- **Correr la app**: `npm run web` (o vía el panel de preview con el
+  launch config `nummi-web` en `.claude/launch.json`).
+- **Tests**: `npx jest`.
+- **Spec funcional completa**: [CONTEXT.md](CONTEXT.md).
+- **Historial de decisiones de UX/copy**: revisar los mensajes de commit
+  (`git log`), son descriptivos y explican el "por qué", no solo el "qué".

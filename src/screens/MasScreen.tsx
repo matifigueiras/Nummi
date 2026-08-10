@@ -12,18 +12,14 @@ import { Screen } from '../components/Screen';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Sheet } from '../components/Sheet';
 import { useApp } from '../store/AppContext';
+import { useAuth } from '../store/AuthContext';
 import { ThemeMode, useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
-
-// El resto del contenido de "Más" se define en próximas iteraciones.
-
-const PENDING_ITEMS: { icon: keyof typeof Feather.glyphMap; label: string }[] = [
-  { icon: 'database', label: 'Conectar almacenamiento' },
-];
 
 export function MasScreen() {
   const { mode, setMode, colors } = useTheme();
   const { resetData } = useApp();
+  const { session, signOut } = useAuth();
   const styles = useThemedStyles(makeStyles);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
@@ -31,18 +27,24 @@ export function MasScreen() {
   const [showExport, setShowExport] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
 
+  const email = session?.user.email ?? '';
+
   return (
     <Screen>
       <Text style={styles.title}>Más</Text>
 
       <Card style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>M</Text>
+        <View style={styles.avatarRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{email.charAt(0).toUpperCase() || '?'}</Text>
+          </View>
+          <Text style={styles.email} numberOfLines={1}>
+            {email}
+          </Text>
         </View>
-        <View>
-          <Text style={styles.name}>Mati</Text>
-          <Text style={styles.email}>matifigueiras9@gmail.com</Text>
-        </View>
+        <Pressable onPress={signOut} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cerrar sesión">
+          <Feather name="log-out" size={18} color={colors.muted} />
+        </Pressable>
       </Card>
 
       <Card>
@@ -95,27 +97,16 @@ export function MasScreen() {
           <Text style={styles.itemLabel}>Exportar datos</Text>
           <Feather name="chevron-right" size={18} color={colors.muted} />
         </Pressable>
-        {PENDING_ITEMS.map((item) => (
-          <View key={item.label} style={[styles.item, styles.itemBorder]}>
-            <View style={styles.itemIcon}>
-              <ItemIcon icon={item.icon} />
-            </View>
-            <Text style={styles.itemLabel}>{item.label}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Pronto</Text>
-            </View>
-          </View>
-        ))}
         <Pressable style={[styles.item, styles.itemBorder]} onPress={() => setShowResetModal(true)}>
           <View style={styles.itemIcon}>
             <ItemIcon icon="rotate-ccw" />
           </View>
-          <Text style={styles.itemLabel}>Restablecer datos de ejemplo</Text>
+          <Text style={styles.itemLabel}>Restablecer datos</Text>
           <Feather name="chevron-right" size={18} color={colors.muted} />
         </Pressable>
       </Card>
 
-      <Text style={styles.footer}>Nummi v0.1 · Datos guardados en este dispositivo</Text>
+      <Text style={styles.footer}>Nummi v0.1 · Sincronizado con tu cuenta</Text>
 
       <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />
       <CategoriesModal visible={showCategories} onClose={() => setShowCategories(false)} />
@@ -128,8 +119,8 @@ export function MasScreen() {
         title="Restablecer datos"
       >
         <Text style={styles.resetText}>
-          Se borra todo lo que cargaste (movimientos, posiciones, propiedades y meta) y la app
-          vuelve a los datos de ejemplo. No se puede deshacer.
+          Se borra todo lo que cargaste (movimientos, fijos, posiciones, propiedades, presupuestos
+          y meta). Tus cuentas y categorías quedan igual. No se puede deshacer.
         </Text>
         <ConfirmDeleteButton
           label="Restablecer datos"
@@ -159,30 +150,33 @@ const makeStyles = (c: ThemeColors) =>
     profileCard: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
+    },
+    avatarRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: spacing.lg,
     },
     avatar: {
-      width: 52,
-      height: 52,
+      width: 44,
+      height: 44,
       borderRadius: radius.full,
       backgroundColor: c.accent,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
-      fontSize: 22,
+      fontSize: 18,
       fontWeight: '700',
       color: '#FFFFFF',
     },
-    name: {
-      fontSize: font.heading,
-      fontWeight: '700',
-      color: c.ink,
-    },
     email: {
-      fontSize: font.label,
-      color: c.muted,
-      marginTop: 1,
+      flex: 1,
+      fontSize: font.body,
+      fontWeight: '600',
+      color: c.ink,
     },
     sectionLabel: {
       fontSize: font.label,
@@ -216,17 +210,6 @@ const makeStyles = (c: ThemeColors) =>
       fontSize: font.body,
       fontWeight: '500',
       color: c.ink,
-    },
-    badge: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 3,
-      borderRadius: radius.full,
-      backgroundColor: c.inkSoft,
-    },
-    badgeText: {
-      fontSize: font.caption,
-      fontWeight: '600',
-      color: c.secondary,
     },
     footer: {
       textAlign: 'center',

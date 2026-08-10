@@ -17,6 +17,7 @@ import {
   mockProperties,
   mockSavingsGoal,
 } from './mock';
+import { SupabaseRepository } from './SupabaseRepository';
 
 // Capa de acceso a datos. La app entera habla con esta interfaz — cuando haya
 // una API/base de datos real alcanza con escribir otra implementación de
@@ -91,7 +92,7 @@ interface StoredData {
   savingsGoal: SavingsGoal;
 }
 
-const STORAGE_KEY = 'nummi:data:v1';
+export const STORAGE_KEY = 'nummi:data:v1';
 
 function seed(): StoredData {
   return {
@@ -139,7 +140,7 @@ function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-class LocalStorageRepository implements DataRepository {
+export class LocalStorageRepository implements DataRepository {
   private state: StoredData | null = null;
 
   private async load(): Promise<StoredData> {
@@ -448,4 +449,6 @@ class LocalStorageRepository implements DataRepository {
   }
 }
 
-export const repository: DataRepository = new LocalStorageRepository();
+// eslint-disable-next-line import/no-cycle -- SupabaseRepository sólo importa
+// tipos de este archivo (interfaz), no hay dependencia real en runtime
+export const repository: DataRepository = new SupabaseRepository();
