@@ -18,6 +18,8 @@ export interface ThemeColors {
   expense: string;
   expenseText: string;
   expenseSoft: string;
+  /** Tercer color categórico, sólo para el donut de composición de Patrimonio */
+  investment: string;
   inkSoft: string;
   danger: string;
   dangerSoft: string;
@@ -45,6 +47,7 @@ export const lightColors: ThemeColors = {
   expense: '#E8590C',
   expenseText: '#C2410C',
   expenseSoft: '#FDEEE3',
+  investment: '#2563EB',
   inkSoft: '#EEF1F5',
   danger: '#DC2626',
   dangerSoft: '#FEE9E9',
@@ -68,6 +71,7 @@ export const darkColors: ThemeColors = {
   expense: '#E56A1F',
   expenseText: '#F08B4E',
   expenseSoft: '#33231A',
+  investment: '#3B82F6',
   inkSoft: '#222834',
   danger: '#F87171',
   dangerSoft: '#3B2023',

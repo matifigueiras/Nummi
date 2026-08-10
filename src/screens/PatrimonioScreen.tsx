@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { NewPositionModal } from '../components/NewPositionModal';
 import { NewPropertyModal } from '../components/NewPropertyModal';
 import { Screen } from '../components/Screen';
+import { WealthDonut } from '../components/WealthDonut';
 import { useApp } from '../store/AppContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
@@ -69,9 +70,7 @@ export function PatrimonioScreen() {
         )}
 
         <View style={styles.breakdown}>
-          <BreakdownRow icon="credit-card" label="Efectivo" value={formatMoney(cashUsd, 'USD')} />
-          <BreakdownRow icon="trending-up" label="Inversiones" value={formatMoney(investmentsUsd, 'USD')} />
-          <BreakdownRow icon="key" label="Propiedades" value={formatMoney(propertiesUsd, 'USD')} />
+          <WealthDonut cash={cashUsd} investments={investmentsUsd} properties={propertiesUsd} />
         </View>
       </Card>
 
@@ -152,26 +151,6 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd: () => void }) {
       >
         <Feather name="plus" size={18} color={colors.ink} />
       </Pressable>
-    </View>
-  );
-}
-
-function BreakdownRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Feather.glyphMap;
-  label: string;
-  value: string;
-}) {
-  const { colors } = useTheme();
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.breakdownRow}>
-      <Feather name={icon} size={15} color={colors.secondary} />
-      <Text style={styles.breakdownLabel}>{label}</Text>
-      <Text style={styles.breakdownValue}>{value}</Text>
     </View>
   );
 }
@@ -324,23 +303,6 @@ const makeStyles = (c: ThemeColors) =>
       paddingTop: spacing.lg,
       borderTopWidth: 1,
       borderTopColor: c.border,
-      gap: spacing.md,
-    },
-    breakdownRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-    },
-    breakdownLabel: {
-      flex: 1,
-      fontSize: font.body,
-      color: c.secondary,
-    },
-    breakdownValue: {
-      fontSize: font.body,
-      fontWeight: '600',
-      color: c.ink,
-      fontVariant: ['tabular-nums'],
     },
     sectionCard: {
       paddingTop: spacing.lg,
