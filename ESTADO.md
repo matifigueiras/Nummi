@@ -236,6 +236,68 @@ verificado en el navegador, typecheck limpio y tests en verde en cada paso
     seria/directa, y hoy no hay tracking diario de presupuesto para
     sostener la lógica de "racha".
 
+## 0.6. Evolución del patrimonio + deploy web — EN CURSO (2026-08-11)
+
+Dos pedidos de Mati en la misma sesión: (a) un gráfico de patrimonio en el
+tiempo, y (b) usar Nummi como página web (no como app) para acceder desde
+cualquier dispositivo sin instalar nada — esto último también resuelve de
+paso el problema de Expo Go/SDK 57 en iPhone (sección 5).
+
+### Código escrito y commiteado (`29c2d4d`) — typecheck limpio, 140 tests
+- **`wealth_snapshots`** (tabla nueva): una fila por usuario y mes
+  (`month_key`, `cash_usd`, `investments_usd`, `properties_usd`), RLS por
+  dueño. La del mes en curso se pisa (upsert) cada vez que se abre la app;
+  las de meses cerrados quedan fijas. **No hay forma de reconstruir meses
+  anteriores a que esto exista** — `positions`/`properties` no tienen
+  historial de precio propio, así que el gráfico arranca vacío y crece con
+  el uso, no con el pasado.
+- **`wealthBreakdown`** (`calc.ts`): extrae a una función pura y testeada el
+  cálculo de efectivo/inversiones/propiedades que antes vivía sólo en
+  `PatrimonioScreen` — ahora lo usan tanto la pantalla como la captura de
+  la foto mensual, sin lógica duplicada.
+- **`captureWealthSnapshot`** (`AppContext.tsx`): corre una vez por sesión,
+  mismo patrón que `applyRecurrings` (lee fresco del repositorio, no del
+  estado de React), pero espera a que la cotización del dólar termine de
+  cargar antes de disparar.
+- **`WealthTrend.tsx`**: línea de evolución en SVG (con área) + variación %
+  desde el primer mes guardado, en una card nueva en Patrimonio. Estado
+  vacío mientras haya menos de 2 fotos ("Todavía no hay suficientes meses
+  guardados...").
+- **`supabase/migrations/`**: carpeta nueva para migraciones incrementales
+  (antes sólo existía `schema.sql` completo). `001_wealth_snapshots.sql` es
+  la primera.
+
+### Bloqueado: la escritura real contra Supabase no se pudo confirmar
+Mati corrió la migración en el SQL Editor (confirmado: el segundo intento
+tiró `relation "wealth_snapshots" already exists`, o sea que la tabla se
+creó bien la primera vez). Pero la app seguía recibiendo
+`PGRST205: Could not find the table 'public.wealth_snapshots' in the schema
+cache'` incluso después de:
+- Esperar ~10s.
+- Correr `NOTIFY pgrst, 'reload schema';` en el SQL Editor.
+- Recargar la página varias veces, incluso con cache-busting (`?cb=...`).
+
+Lo raro: un `curl` directo a `/rest/v1/wealth_snapshots` y un `fetch()` crudo
+ejecutado *desde el propio navegador* (bypaseando el cliente de Supabase de
+la app) **sí funcionaron** (devolvieron `[]`, no error) — pero la app,
+cargando fresca inmediatamente después, seguía viendo el error. Da la
+sensación de que el schema cache de PostgREST no había terminado de
+propagarse a todas las réplicas/pooler de Supabase en simultáneo (`NOTIFY`
+no siempre llega a todas). **Próximo paso sugerido y no confirmado
+todavía**: reiniciar el proyecto entero desde Settings → General → "Restart
+project" en el dashboard (fix más contundente que `NOTIFY`, con costo de
+~1-2 min de downtime). Se le preguntó a Mati si quería hacerlo y la sesión
+se cortó ahí — **retomar por acá**.
+
+### Deploy web (Vercel) — no arrancado todavía
+Mati eligió **Vercel** (recomendada) sobre Netlify cuando se le preguntó.
+Nada hecho todavía: falta armar el build estático de Expo Web, la config de
+Vercel, que Mati cree su cuenta y conecte el proyecto, cargar las env vars
+(`EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY`) en el dashboard
+de Vercel, y agregar la URL pública resultante a la lista de Redirect URLs
+permitidas en Supabase (Authentication → URL Configuration) — mismo paso que
+se hizo para `http://localhost:8081` en la migración original (sección 0).
+
 ## 1. Funcionalidades confirmadas y funcionando
 
 Todo lo de abajo fue **verificado a mano en el navegador** (Expo Web,
