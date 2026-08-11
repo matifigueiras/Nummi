@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
@@ -70,6 +70,19 @@ export function BudgetsCard({ progress, editable }: Props) {
 function BudgetRow({ item }: { item: BudgetProgress }) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const width = useRef(new Animated.Value(0)).current;
+  const pct = Math.min(item.ratio, 1) * 100;
+
+  useEffect(() => {
+    Animated.timing(width, {
+      toValue: pct,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width no es animable por el driver nativo
+    }).start();
+    // Se re-dispara con pct a propósito: al cambiar de mes o editar un
+    // presupuesto, la barra debe animar hacia el nuevo valor, no saltar.
+  }, [pct, width]);
 
   const tone =
     item.status === 'excedido'
@@ -92,10 +105,13 @@ function BudgetRow({ item }: { item: BudgetProgress }) {
         </Text>
       </View>
       <View style={styles.track}>
-        <View
+        <Animated.View
           style={[
             styles.fill,
-            { width: `${Math.min(item.ratio, 1) * 100}%`, backgroundColor: tone },
+            {
+              width: width.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+              backgroundColor: tone,
+            },
           ]}
         />
       </View>
