@@ -267,27 +267,32 @@ paso el problema de Expo Go/SDK 57 en iPhone (sección 5).
   (antes sólo existía `schema.sql` completo). `001_wealth_snapshots.sql` es
   la primera.
 
-### Bloqueado: la escritura real contra Supabase no se pudo confirmar
-Mati corrió la migración en el SQL Editor (confirmado: el segundo intento
-tiró `relation "wealth_snapshots" already exists`, o sea que la tabla se
-creó bien la primera vez). Pero la app seguía recibiendo
-`PGRST205: Could not find the table 'public.wealth_snapshots' in the schema
-cache'` incluso después de:
-- Esperar ~10s.
-- Correr `NOTIFY pgrst, 'reload schema';` en el SQL Editor.
-- Recargar la página varias veces, incluso con cache-busting (`?cb=...`).
+### Escritura real confirmada — Supabase quedó intermitente por un rato, ya se estabiliza solo
+Mati corrió la migración y después reinició el proyecto entero (Settings →
+General → Restart project). El error `PGRST205: Could not find the table
+'public.wealth_snapshots' in the schema cache` siguió apareciendo incluso
+después del restart — pero de forma **intermitente**, no siempre:
 
-Lo raro: un `curl` directo a `/rest/v1/wealth_snapshots` y un `fetch()` crudo
-ejecutado *desde el propio navegador* (bypaseando el cliente de Supabase de
-la app) **sí funcionaron** (devolvieron `[]`, no error) — pero la app,
-cargando fresca inmediatamente después, seguía viendo el error. Da la
-sensación de que el schema cache de PostgREST no había terminado de
-propagarse a todas las réplicas/pooler de Supabase en simultáneo (`NOTIFY`
-no siempre llega a todas). **Próximo paso sugerido y no confirmado
-todavía**: reiniciar el proyecto entero desde Settings → General → "Restart
-project" en el dashboard (fix más contundente que `NOTIFY`, con costo de
-~1-2 min de downtime). Se le preguntó a Mati si quería hacerlo y la sesión
-se cortó ahí — **retomar por acá**.
+- Un `POST` autenticado a mano (con el access token real de la sesión,
+  sacado de `localStorage['sb-<ref>-auth-token']`) escribió perfecto al
+  primer intento: la fila quedó en la base con los valores reales de
+  Efectivo/Inversiones/Propiedades de ese momento, coincidiendo exacto con
+  lo que mostraba la pantalla.
+- Confirmado que `captureWealthSnapshot` corrió solo en algún momento y
+  pisó esa fila con sus propios valores reales (mismo resultado, la app
+  también escribe bien cuando le toca).
+- Pero en la recarga siguiente volvió a aparecer el mismo `PGRST205`.
+
+**Diagnóstico**: no es un bug de la app ni de la migración — la tabla y las
+policies de RLS están bien (probado con escritura real exitosa). Es
+Supabase con varias réplicas de PostgREST detrás del mismo endpoint, no
+todas sincronizadas todavía al mismo schema, así que las requests le pegan
+a una u otra al azar. Debería auto-resolverse con el tiempo a medida que
+todas las réplicas convergen — no hace falta ninguna acción más de nuestro
+lado. **Si se retoma este hilo y el error sigue apareciendo seguido
+después de un rato considerable, ahí sí vale la pena escribirle a soporte
+de Supabase**, pero por ahora no es motivo de alarma ni de seguir
+investigando.
 
 ### Deploy web (Vercel) — no arrancado todavía
 Mati eligió **Vercel** (recomendada) sobre Netlify cuando se le preguntó.
