@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { AccountModal } from '../components/AccountModal';
 import { AccountPicker } from '../components/AccountPicker';
@@ -310,6 +310,20 @@ function CategoryBar({
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const ratio = maxAmount > 0 ? amount / maxAmount : 0;
+  const pct = Math.max(ratio * 100, 2);
+  const width = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(width, {
+      toValue: pct,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width no es animable por el driver nativo
+    }).start();
+    // Se re-dispara con pct a propósito: cambiar de mes o cuenta debe animar
+    // hacia el nuevo valor, no saltar.
+  }, [pct, width]);
+
   return (
     <View style={styles.categoryItem}>
       <View style={styles.categoryHeader}>
@@ -317,10 +331,13 @@ function CategoryBar({
         <Text style={styles.categoryAmount}>{formatMoney(amount, currency)}</Text>
       </View>
       <View style={styles.categoryTrack}>
-        <View
+        <Animated.View
           style={[
             styles.categoryFill,
-            { width: `${Math.max(ratio * 100, 2)}%`, backgroundColor: colors.expense },
+            {
+              width: width.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+              backgroundColor: colors.expense,
+            },
           ]}
         />
       </View>
