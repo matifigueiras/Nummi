@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, spacing, ThemeColors } from '../theme';
@@ -7,12 +7,19 @@ import { formatMoney } from '../utils/format';
 
 // Donut de composición del patrimonio (Efectivo / Inversiones / Propiedades).
 // Mismo trazado que Donut.tsx, generalizado a N segmentos en vez de 2 fijos.
+// Los arcos "dibujan" al montar: largo real del trazo vía radio × ángulo, con
+// strokeDashoffset animado de largo completo a 0 (no se recalcula el path por
+// frame, sólo se revela).
 
 const SIZE = 190;
 const STROKE = 22;
 const GAP_DEG = 5;
 const RADIUS = (SIZE - STROKE) / 2;
 const CENTER = SIZE / 2;
+const DRAW_MS = 800;
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 function polar(angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -41,6 +48,19 @@ interface Props {
 export function WealthDonut({ cash, investments, properties }: Props) {
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: DRAW_MS,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // strokeDashoffset no es animable por el driver nativo
+    }).start();
+    // Sólo al montar: un cambio de valores (ej. precios en vivo) no debe
+    // repetir el dibujado, sólo mover el arco a su posición final.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const segments: Segment[] = [
     { label: 'Efectivo', value: cash, color: colors.accent },
@@ -56,8 +76,22 @@ export function WealthDonut({ cash, investments, properties }: Props) {
       <Circle cx={CENTER} cy={CENTER} r={RADIUS} stroke={colors.inkSoft} strokeWidth={STROKE} fill="none" />
     );
   } else if (visible.length === 1) {
+    const circumference = 2 * Math.PI * RADIUS;
+    const dashOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [circumference, 0] });
     chart = (
-      <Circle cx={CENTER} cy={CENTER} r={RADIUS} stroke={visible[0].color} strokeWidth={STROKE} fill="none" />
+      <AnimatedCircle
+        cx={CENTER}
+        cy={CENTER}
+        r={RADIUS}
+        stroke={visible[0].color}
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+        fill="none"
+        strokeDasharray={`${circumference}, ${circumference}`}
+        strokeDashoffset={dashOffset}
+        rotation={-90}
+        origin={`${CENTER}, ${CENTER}`}
+      />
     );
   } else {
     let start = 0;
@@ -66,16 +100,22 @@ export function WealthDonut({ cash, investments, properties }: Props) {
         {visible.map((s) => {
           const deg = (s.value / total) * 360;
           const end = start + deg;
-          const path = arcPath(start + GAP_DEG / 2, end - GAP_DEG / 2);
+          const segStart = start + GAP_DEG / 2;
+          const segEnd = end - GAP_DEG / 2;
+          const path = arcPath(segStart, segEnd);
+          const length = RADIUS * ((segEnd - segStart) * Math.PI) / 180;
+          const dashOffset = progress.interpolate({ inputRange: [0, 1], outputRange: [length, 0] });
           start = end;
           return (
-            <Path
+            <AnimatedPath
               key={s.label}
               d={path}
               stroke={s.color}
               strokeWidth={STROKE}
               strokeLinecap="round"
               fill="none"
+              strokeDasharray={`${length}, ${length}`}
+              strokeDashoffset={dashOffset}
             />
           );
         })}
