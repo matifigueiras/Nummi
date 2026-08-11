@@ -200,6 +200,42 @@ Las 5 tasks de este hilo (`#1`-`#5`) están todas **completed**: instalar
 cliente, login, `SupabaseRepository`, migración de datos, cutover +
 verificación end-to-end. La migración a Supabase está terminada.
 
+## 0.5. Pulido visual post-migración — COMPLETO (2026-08-11)
+
+Con Supabase ya cerrado, en la misma sesión se sumó una tanda de UI. Todo
+verificado en el navegador, typecheck limpio y tests en verde en cada paso
+(136 tests al cierre, arrancó en 128).
+
+- **Donut de composición del patrimonio** (`WealthDonut.tsx`): Efectivo /
+  Inversiones / Propiedades en Patrimonio, reemplazó el listado de íconos.
+  Paleta de 3 colores validada con el script de accesibilidad del skill de
+  dataviz (nuevo token `investment` en `theme.ts`).
+- **Animaciones draw-in** en: el donut de Patrimonio, las barras de
+  presupuesto de Home, las barras de "Gastos por categoría" en Cuentas, y las
+  columnas de "Ahorro por mes" en Home (que además ganó una transición suave
+  de opacidad al elegir mes, antes saltaba). Todas con `Animated.timing` +
+  `strokeDashoffset`/`width` interpolado, sin dependencias nuevas.
+- **Fix de bug real** (no cosmético): `NewPropertyModal.tsx` bloqueaba
+  guardar si "Alquiler mensual" quedaba vacío (`parsedRent` no trataba
+  vacío como 0, a diferencia de `parsedExpenses`) — corregido.
+- **Ocultar montos / variación % / insight automático**: Mati pasó un zip
+  con 4 componentes + 1 hook de referencia (revisados por seguridad antes de
+  tocar nada — sin código sospechoso, pero con colores/fuentes/`Ionicons`
+  hardcodeados y datos mock). Se integraron 3 de las 4 piezas, reescritas
+  para usar el tema real y datos reales:
+  - `PrivacyContext.tsx`: botón de ojo compartido y persistido (mismo patrón
+    que `ThemeContext`) que tapa el saldo/patrimonio/stats principales en
+    Home, Cuentas y Patrimonio (no los charts ni las listas, a propósito).
+  - `PercentageDelta.tsx`: variación % vs. mes anterior debajo de Ingresos y
+    Gastos en Home (Ahorro quedó afuera: el signo puede cruzar cero y ahí
+    un % no tiene sentido — ver `percentDelta` en `calc.ts`).
+  - `InsightCard.tsx` + `monthlyInsight` (`calc.ts`): compara gasto por
+    categoría del mes actual contra el anterior, sin IA.
+  - **No se integró** `StreakBadge` (racha tipo Duolingo) — decisión de
+    Mati: es un cambio de tono (gamificación) para una app que venía siendo
+    seria/directa, y hoy no hay tracking diario de presupuesto para
+    sostener la lógica de "racha".
+
 ## 1. Funcionalidades confirmadas y funcionando
 
 Todo lo de abajo fue **verificado a mano en el navegador** (Expo Web,
@@ -285,32 +321,29 @@ hicieron las acciones concretas descriptas, no una inferencia.
 
 ## 2. Pendiente de probar o a medio hacer
 
-- **Nada a medio hacer**: el working tree está limpio, sin código sin
-  commitear. Cada feature de la lista de arriba está completa end-to-end.
+- **Nada a medio hacer**: el working tree está limpio, todo commiteado
+  (último commit `db1ed1a`). Cada feature de las secciones 0 / 0.5 está
+  completa end-to-end.
 - **iOS/Android real: sigue sin probarse.** Esta Mac no tiene Xcode
   instalado (solo Command Line Tools), así que nunca se pudo abrir el
-  simulador de iPhone. Hice un pase de ajustes "a ciegas" para viewport
-  angosto (safe area en `Sheet`, ícono de lápiz en vez de texto largo en
-  el tile de meta) pero **nadie tocó la app en un dispositivo o simulador
-  real todavía**. Esto sigue siendo el hueco de verificación más grande.
+  simulador de iPhone. Además, Expo Go de App Store todavía no tiene
+  aprobada la versión para SDK 57 (el que usa Nummi) — es un problema
+  actual de Expo, no de acá; ver detalle en sección 5. **Sigue siendo el
+  hueco de verificación más grande**: nadie tocó la app en un dispositivo o
+  simulador real todavía, todo fue Expo Web.
 - **Backend real (Supabase)**: hecho y verificado — migración completa el
-  2026-08-09, ver sección 0 arriba para el detalle. `repository` ya no es
-  `LocalStorageRepository`. Google Sheets sigue descartado como opción (no
-  cambió esa decisión).
+  2026-08-09, ver sección 0. `repository` ya no es `LocalStorageRepository`.
+  Google Sheets sigue descartado como opción.
+- **Racha de presupuesto** (`StreakBadge`, sección 0.5): descartada por
+  ahora, no por falta de tiempo — es una decisión de producto (tono
+  gamificado) que Mati puede retomar si en algún momento quiere trackear
+  cumplimiento de presupuesto día a día.
 
 ## 3. En qué se estaba trabajando ahora mismo
 
-**La migración a Supabase (sección 0) se completó y verificó en la misma
-sesión que arrancó.** Al momento de este snapshot original (2026-08-09,
-commit `132ba45`) no había nada en curso — esa tanda de trabajo (4 mejoras:
-cotización histórica, buscador, formateo de miles, accesibilidad) se había
-completado y commiteado en su totalidad. La migración a Supabase es trabajo
-nuevo, **todavía sin commitear** (son muchos archivos nuevos: `.env`,
-`supabase/`, `src/services/supabase.ts`, `src/store/AuthContext.tsx`,
-`src/screens/LoginScreen.tsx`, `src/data/SupabaseRepository.ts`,
-`src/data/supabaseMappers.ts`, `src/data/migrateLocalData.ts`, cambios en
-`App.tsx`/`MasScreen.tsx`/`repository.ts` — revisar `git status` antes de
-commitear, y no incluir `.env`, que ya está en `.gitignore`).
+**Nada activo.** La migración a Supabase (sección 0) y la tanda de pulido
+visual post-migración (sección 0.5) se completaron y commitearon en su
+totalidad en la misma sesión que arrancaron (2026-08-09 a 2026-08-11).
 
 Si algo quedó "caliente" de la tanda anterior (la del commit `132ba45`) es
 el conocimiento fresco de estos archivos (por si hay que iterar sobre ellos):
@@ -363,17 +396,32 @@ el conocimiento fresco de estos archivos (por si hay que iterar sobre ellos):
 
 ## 5. Próximos pasos sugeridos
 
-Con Supabase cerrado (sección 0), la lista queda así:
+Con Supabase y el pulido visual cerrados (secciones 0 y 0.5), lo único que
+queda es el hueco de siempre — probar en un dispositivo real — más ideas
+sueltas sin decidir todavía:
 
-1. **Commitear la migración a Supabase** — está toda la funcionalidad
-   verificada pero sin commitear todavía (ver sección 3 para la lista de
-   archivos).
-2. Instalar Xcode y probar en el simulador de iOS — sigue pendiente, quedó
-   en segundo plano durante la migración a Supabase, no porque Mati lo haya
-   descartado.
-3. Ejercitar más pantallas contra la base real (sección 0, "Pendiente").
-4. Si se retoma edición de `src/utils/search.ts`, considerar limpiar el
+1. **Probar en un dispositivo/simulador real.** Tres caminos, ninguno
+   trivial hoy:
+   - **`eas go`**: arma una versión propia de Expo Go instalable por
+     TestFlight — es el único camino para iPhone físico con SDK 57 ahora
+     mismo (Expo Go de App Store está trabado en revisión de Apple para esa
+     versión). Requiere Apple Developer Program (pago, USD 99/año).
+   - **Xcode + simulador de iOS**: no depende de Apple Developer Program ni
+     de la aprobación de Expo Go, pero requiere instalar Xcode (pesado,
+     necesita la clave de admin de la Mac). Sigue sin hacerse.
+   - **Android**: no debería tener el problema de SDK que tiene iOS —
+     `npm start` + Expo Go de Play Store tendría que andar directo. No
+     probado porque no hay un Android a mano en esta sesión.
+   - Mientras tanto, la app funciona igual desde el navegador del celu
+     (Safari/Chrome a la IP local de la compu) sin instalar nada.
+2. Ejercitar más pantallas de Supabase con uso real y sostenido (más allá
+   de la verificación puntual ya hecha en la sección 0).
+3. Si se retoma edición de `src/utils/search.ts`, considerar limpiar el
    encoding del regex de diacríticos (cosmético, ver sección 4).
+4. Ideas sueltas mencionadas pero no decididas: gráfico de evolución del
+   patrimonio en el tiempo (necesita empezar a guardar un snapshot mensual,
+   hoy no existe) y la racha de presupuesto (`StreakBadge`, descartada por
+   tono — ver sección 0.5).
 5. Antes de cualquier commit nuevo: correr `npx tsc --noEmit && npx jest`.
 
 ## Referencia rápida
