@@ -214,3 +214,56 @@ export function propertyYieldPct(property: Property, ventaRate: number): number 
     toUsdAmount(property.monthlyExpenses, property.expensesCurrency);
   return (netMonthlyUsd * 12 * 100) / valueUsd;
 }
+
+/**
+ * Variación % entre dos valores. `null` si no hay base de comparación
+ * (mes anterior en cero o sin datos) — dividir por cero no tiene un % real.
+ */
+export function percentDelta(current: number, previous: number): number | null {
+  if (previous <= 0) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+export interface Insight {
+  message: string;
+  tone: 'positive' | 'negative';
+}
+
+// Variaciones por debajo de esto se consideran ruido, no una noticia real
+const INSIGHT_MIN_CHANGE_PCT = 10;
+// Categorías con montos irrelevantes en ambos meses no generan insight
+const INSIGHT_MIN_AMOUNT = 1000;
+
+/**
+ * Compara el gasto por categoría del mes actual contra el anterior y devuelve
+ * la variación más relevante (mayor % en valor absoluto). No usa IA: es una
+ * comparación directa sobre los mismos datos de `expensesByCategory`.
+ */
+export function monthlyInsight(current: CategoryTotal[], previous: CategoryTotal[]): Insight | null {
+  const prevByCategory = new Map(previous.map((c) => [c.category, c.amount]));
+
+  let best: { category: string; pct: number } | null = null;
+  for (const curr of current) {
+    const prevAmount = prevByCategory.get(curr.category);
+    if (!prevAmount) continue;
+    if (curr.amount < INSIGHT_MIN_AMOUNT && prevAmount < INSIGHT_MIN_AMOUNT) continue;
+
+    const pct = ((curr.amount - prevAmount) / prevAmount) * 100;
+    if (Math.abs(pct) < INSIGHT_MIN_CHANGE_PCT) continue;
+
+    // Prioriza la variación más grande en valor absoluto
+    if (!best || Math.abs(pct) > Math.abs(best.pct)) {
+      best = { category: curr.category, pct };
+    }
+  }
+
+  if (!best) return null;
+  const rounded = Math.round(Math.abs(best.pct));
+  const isReduction = best.pct < 0;
+  return {
+    message: isReduction
+      ? `Gastaste ${rounded}% menos en ${best.category.toLowerCase()} que el mes pasado. ¡Bien ahí!`
+      : `Gastaste ${rounded}% más en ${best.category.toLowerCase()} que el mes pasado.`,
+    tone: isReduction ? 'positive' : 'negative',
+  };
+}

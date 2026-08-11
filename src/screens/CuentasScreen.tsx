@@ -5,11 +5,13 @@ import { AccountModal } from '../components/AccountModal';
 import { AccountPicker } from '../components/AccountPicker';
 import { Card } from '../components/Card';
 import { FormInput } from '../components/form';
+import { HideBalanceButton } from '../components/HideBalanceButton';
 import { MonthNav } from '../components/MonthNav';
 import { MovementRow } from '../components/MovementRow';
 import { NewMovementModal } from '../components/NewMovementModal';
 import { Screen } from '../components/Screen';
 import { useApp } from '../store/AppContext';
+import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
@@ -26,6 +28,7 @@ import {
   formatMonth,
   formatShortDate,
   formatSigned,
+  HIDDEN_AMOUNT,
   monthKey,
   monthKeyOf,
 } from '../utils/format';
@@ -39,6 +42,7 @@ function startOfMonth(date: Date): Date {
 
 export function CuentasScreen() {
   const { accounts, movements, dolar, dolarHistory } = useApp();
+  const { hidden } = usePrivacy();
   const styles = useThemedStyles(makeStyles);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -135,26 +139,30 @@ export function CuentasScreen() {
               ? 'Saldo disponible'
               : `Saldo al cierre de ${formatMonth(month).toLowerCase()}`}
           </Text>
-          <Pressable
-            onPress={() => setAccountModal('edit')}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Editar cuenta"
-          >
-            <Feather name="edit-2" size={14} color={styles.emptyIcon.color} />
-          </Pressable>
+          <View style={styles.balanceActions}>
+            <HideBalanceButton />
+            <Pressable
+              onPress={() => setAccountModal('edit')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Editar cuenta"
+            >
+              <Feather name="edit-2" size={14} color={styles.emptyIcon.color} />
+            </Pressable>
+          </View>
         </View>
-        <Text style={styles.balanceValue}>{formatMoney(balance, currency)}</Text>
+        <Text style={styles.balanceValue}>{hidden ? HIDDEN_AMOUNT : formatMoney(balance, currency)}</Text>
         <Text style={styles.balanceEquivalent}>
-          ≈ {equivalent} al blue
-          {isCurrentMonth ? '' : ` del ${formatShortDate(endOfMonthISO(month))}`}
+          {hidden
+            ? HIDDEN_AMOUNT
+            : `≈ ${equivalent} al blue${isCurrentMonth ? '' : ` del ${formatShortDate(endOfMonthISO(month))}`}`}
         </Text>
         {/* Con varias cuentas de la misma moneda, el total ayuda a no perder
             de vista cuánto hay en total en pesos (o en dólares) */}
         {sameCurrencyCount > 1 && (
           <Text style={styles.balanceTotal}>
             Total en {currency === 'ARS' ? 'pesos' : 'dólares'}:{' '}
-            {formatMoney(currencyTotal, currency)}
+            {hidden ? HIDDEN_AMOUNT : formatMoney(currencyTotal, currency)}
           </Text>
         )}
       </Card>
@@ -357,6 +365,11 @@ const makeStyles = (c: ThemeColors) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+    },
+    balanceActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
     },
     balanceLabel: {
       fontSize: font.label,

@@ -5,7 +5,9 @@ import {
   budgetProgress,
   constantRate,
   expensesByCategory,
+  monthlyInsight,
   monthStats,
+  percentDelta,
   positionPnlPct,
   positionValue,
   propertyYieldPct,
@@ -402,5 +404,64 @@ describe('propertyYieldPct', () => {
 
   it('no divide por cero si el valor estimado es 0', () => {
     expect(propertyYieldPct(property({ estimatedValue: 0 }), RATE)).toBe(0);
+  });
+});
+
+describe('percentDelta', () => {
+  it('calcula la variación porcentual entre dos valores', () => {
+    expect(percentDelta(120, 100)).toBeCloseTo(20, 5);
+    expect(percentDelta(80, 100)).toBeCloseTo(-20, 5);
+  });
+
+  it('da null si no hay mes anterior con qué comparar', () => {
+    expect(percentDelta(100, 0)).toBeNull();
+    expect(percentDelta(100, -50)).toBeNull();
+  });
+});
+
+describe('monthlyInsight', () => {
+  it('elige la categoría con mayor variación porcentual en valor absoluto', () => {
+    const current = [
+      { category: 'Comida', amount: 55_000 }, // +10% (chico)
+      { category: 'Viajes', amount: 30_000 }, // -70% (grande)
+    ];
+    const previous = [
+      { category: 'Comida', amount: 50_000 },
+      { category: 'Viajes', amount: 100_000 },
+    ];
+    const insight = monthlyInsight(current, previous);
+    expect(insight?.tone).toBe('positive');
+    expect(insight?.message).toContain('70%');
+    expect(insight?.message).toContain('viajes');
+  });
+
+  it('marca como negativo un aumento de gasto', () => {
+    const current = [{ category: 'Salidas', amount: 50_000 }];
+    const previous = [{ category: 'Salidas', amount: 20_000 }];
+    const insight = monthlyInsight(current, previous);
+    expect(insight?.tone).toBe('negative');
+    expect(insight?.message).toContain('150%');
+  });
+
+  it('ignora variaciones menores al umbral', () => {
+    const current = [{ category: 'Comida', amount: 105_000 }];
+    const previous = [{ category: 'Comida', amount: 100_000 }];
+    expect(monthlyInsight(current, previous)).toBeNull();
+  });
+
+  it('ignora categorías con montos irrelevantes en ambos meses', () => {
+    const current = [{ category: 'Otros', amount: 500 }];
+    const previous = [{ category: 'Otros', amount: 100 }];
+    expect(monthlyInsight(current, previous)).toBeNull();
+  });
+
+  it('ignora categorías nuevas sin mes anterior para comparar', () => {
+    const current = [{ category: 'Mascota', amount: 40_000 }];
+    const previous: { category: string; amount: number }[] = [];
+    expect(monthlyInsight(current, previous)).toBeNull();
+  });
+
+  it('da null sin datos', () => {
+    expect(monthlyInsight([], [])).toBeNull();
   });
 });

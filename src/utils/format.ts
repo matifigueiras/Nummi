@@ -15,6 +15,9 @@ function getFormatter(currency: Currency, compact: boolean): Intl.NumberFormat {
   return formatters[key];
 }
 
+/** Reemplazo visual de un monto cuando el usuario lo oculta (ver PrivacyContext) */
+export const HIDDEN_AMOUNT = '••••••';
+
 export function formatMoney(amount: number, currency: Currency): string {
   return getFormatter(currency, false).format(amount);
 }

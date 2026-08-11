@@ -2,19 +2,22 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Card } from '../components/Card';
+import { HideBalanceButton } from '../components/HideBalanceButton';
 import { NewPositionModal } from '../components/NewPositionModal';
 import { NewPropertyModal } from '../components/NewPropertyModal';
 import { Screen } from '../components/Screen';
 import { WealthDonut } from '../components/WealthDonut';
 import { useApp } from '../store/AppContext';
+import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Position, PositionKind, Property } from '../types';
 import { accountBalance, positionPnlPct, positionValue, propertyYieldPct } from '../utils/calc';
-import { formatMoney, formatPercent, formatRelativeTime, toUsd } from '../utils/format';
+import { formatMoney, formatPercent, formatRelativeTime, HIDDEN_AMOUNT, toUsd } from '../utils/format';
 
 export function PatrimonioScreen() {
   const { accounts, movements, positions, properties, dolar, livePrices } = useApp();
+  const { hidden } = usePrivacy();
   const styles = useThemedStyles(makeStyles);
   const [positionModal, setPositionModal] = useState<PositionKind | null>(null);
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
@@ -60,10 +63,13 @@ export function PatrimonioScreen() {
       <Text style={styles.title}>Patrimonio</Text>
 
       <Card>
-        <Text style={styles.totalLabel}>Patrimonio total</Text>
-        <Text style={styles.totalValue}>{formatMoney(totalUsd, 'USD')}</Text>
+        <View style={styles.totalHeader}>
+          <Text style={styles.totalLabel}>Patrimonio total</Text>
+          <HideBalanceButton />
+        </View>
+        <Text style={styles.totalValue}>{hidden ? HIDDEN_AMOUNT : formatMoney(totalUsd, 'USD')}</Text>
         <Text style={styles.totalEquivalent}>
-          ≈ {formatMoney(totalUsd * dolar.rate.venta, 'ARS')} al blue
+          {hidden ? HIDDEN_AMOUNT : `≈ ${formatMoney(totalUsd * dolar.rate.venta, 'ARS')} al blue`}
         </Text>
         {livePrices.updatedAt && (
           <LiveBadge text={`Precios en vivo · ${formatRelativeTime(livePrices.updatedAt)}`} />
@@ -258,6 +264,11 @@ const makeStyles = (c: ThemeColors) =>
       fontWeight: '700',
       color: c.ink,
       letterSpacing: -0.4,
+    },
+    totalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     totalLabel: {
       fontSize: font.label,

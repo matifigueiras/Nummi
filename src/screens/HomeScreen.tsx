@@ -4,19 +4,31 @@ import { Feather } from '@expo/vector-icons';
 import { BudgetsCard } from '../components/BudgetsCard';
 import { Card } from '../components/Card';
 import { Donut } from '../components/Donut';
+import { HideBalanceButton } from '../components/HideBalanceButton';
+import { InsightCard } from '../components/InsightCard';
 import { MonthNav } from '../components/MonthNav';
+import { PercentageDelta } from '../components/PercentageDelta';
 import { SavingsGoalModal } from '../components/SavingsGoalModal';
 import { SavingsTrend } from '../components/SavingsTrend';
 import { Screen } from '../components/Screen';
 import { StatTile } from '../components/StatTile';
 import { useApp } from '../store/AppContext';
+import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
-import { budgetProgress, monthStats, savingsByMonth } from '../utils/calc';
+import {
+  budgetProgress,
+  expensesByCategory,
+  monthlyInsight,
+  monthStats,
+  percentDelta,
+  savingsByMonth,
+} from '../utils/calc';
 import {
   formatMoney,
   formatMoneyCompact,
   formatRelativeTime,
+  HIDDEN_AMOUNT,
   monthKeyOf,
 } from '../utils/format';
 
@@ -38,6 +50,7 @@ function startOfMonth(date: Date): Date {
 
 export function HomeScreen() {
   const { movements, savingsGoal, budgets, dolar, dolarHistory } = useApp();
+  const { hidden } = usePrivacy();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -71,6 +84,36 @@ export function HomeScreen() {
   const goalPct = savingsGoal.amount > 0 ? Math.max(0, (savings / savingsGoal.amount) * 100) : 0;
   const goalBarProgress = Math.min(1, goalPct / 100);
 
+  // Mes anterior: base de comparación para la variación % y el insight.
+  // Ahorro no entra acá — un "% de variación" no tiene sentido si el mes
+  // pasado cerró en cero o en negativo (ver percentDelta).
+  const previousMonth = useMemo(
+    () => new Date(month.getFullYear(), month.getMonth() - 1, 1),
+    [month],
+  );
+  const previousStats = useMemo(
+    () => monthStats(movements, monthKeyOf(previousMonth), rateForDate),
+    [movements, previousMonth, rateForDate],
+  );
+  const incomeDelta = percentDelta(income, previousStats.income);
+  const expenseDelta = percentDelta(expense, previousStats.expense);
+
+  // Insight automático: mayor variación de gasto por categoría vs. el mes
+  // anterior. Sin tope de categorías (a diferencia del donut de Cuentas) para
+  // no perder de vista una categoría chica que cambió fuerte.
+  const currentCategories = useMemo(
+    () => expensesByCategory(movements, monthKeyOf(month), Infinity),
+    [movements, month],
+  );
+  const previousCategories = useMemo(
+    () => expensesByCategory(movements, monthKeyOf(previousMonth), Infinity),
+    [movements, previousMonth],
+  );
+  const insight = useMemo(
+    () => monthlyInsight(currentCategories, previousCategories),
+    [currentCategories, previousCategories],
+  );
+
   return (
     <Screen>
       <MonthNav
@@ -80,11 +123,14 @@ export function HomeScreen() {
         nextDisabled={isCurrentMonth}
       />
 
-      <View>
-        <Text style={styles.greeting}>
-          {greeting()}, {USER_NAME}
-        </Text>
-        <Text style={styles.subtitle}>Este es el resumen de tu mes</Text>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.greeting}>
+            {greeting()}, {USER_NAME}
+          </Text>
+          <Text style={styles.subtitle}>Este es el resumen de tu mes</Text>
+        </View>
+        <HideBalanceButton />
       </View>
 
       <View style={styles.dolarRow}>
@@ -124,28 +170,32 @@ export function HomeScreen() {
           iconColor={colors.incomeText}
           iconBg={colors.incomeSoft}
           label="Ingresos"
-          value={formatMoney(income, 'ARS')}
-        />
+          value={hidden ? HIDDEN_AMOUNT : formatMoney(income, 'ARS')}
+        >
+          {!hidden && incomeDelta !== null && <PercentageDelta value={incomeDelta} />}
+        </StatTile>
         <StatTile
           icon="arrow-up-right"
           iconColor={colors.expenseText}
           iconBg={colors.expenseSoft}
           label="Gastos"
-          value={formatMoney(expense, 'ARS')}
-        />
+          value={hidden ? HIDDEN_AMOUNT : formatMoney(expense, 'ARS')}
+        >
+          {!hidden && expenseDelta !== null && <PercentageDelta value={expenseDelta} invertColors />}
+        </StatTile>
         <StatTile
           icon="trending-up"
           iconColor={savings >= 0 ? colors.incomeText : colors.expenseText}
           iconBg={savings >= 0 ? colors.incomeSoft : colors.expenseSoft}
           label="Ahorro del mes"
-          value={formatMoney(savings, 'ARS')}
+          value={hidden ? HIDDEN_AMOUNT : formatMoney(savings, 'ARS')}
         />
         <StatTile
           icon="target"
           iconColor={colors.ink}
           iconBg={colors.inkSoft}
           label="Meta de ahorro"
-          value={formatMoneyCompact(savingsGoal.amount, savingsGoal.currency)}
+          value={hidden ? HIDDEN_AMOUNT : formatMoneyCompact(savingsGoal.amount, savingsGoal.currency)}
           sub={`${Math.round(goalPct)}% alcanzado`}
           onPress={() => setShowGoalModal(true)}
         >
@@ -154,6 +204,8 @@ export function HomeScreen() {
           </View>
         </StatTile>
       </View>
+
+      <InsightCard insight={insight} />
 
       <Card>
         <Text style={styles.cardTitle}>Ingresos vs. Gastos</Text>
@@ -174,6 +226,11 @@ export function HomeScreen() {
 
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+    },
     greeting: {
       fontSize: font.title,
       fontWeight: '700',
