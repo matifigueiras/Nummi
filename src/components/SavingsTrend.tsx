@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { MonthlySavings } from '../utils/calc';
@@ -56,61 +56,97 @@ export function SavingsTrend({ data }: Props) {
         {/* Línea de cero: una sola hairline continua detrás de las columnas */}
         <View style={[styles.zeroLine, { top: positiveZone, backgroundColor: colors.border }]} />
         <View style={styles.plot}>
-          {data.map((item) => {
-          const isSelected = item.key === selected.key;
-          const positive = item.savings >= 0;
-          const barHeight = positive
-            ? maxPositive > 0
-              ? (item.savings / maxPositive) * positiveZone
-              : 0
-            : maxNegative > 0
-              ? (-item.savings / maxNegative) * negativeZone
-              : 0;
-            return (
-              <Pressable
-                key={item.key}
-                style={styles.column}
-                onPress={() => setSelectedKey(item.key)}
-              >
-                <View style={[styles.positiveZone, { height: positiveZone }]}>
-                  {positive && (
-                    <View
-                      style={[
-                        styles.bar,
-                        styles.barPositive,
-                        {
-                          height: Math.max(barHeight, item.savings > 0 ? 3 : 0),
-                          backgroundColor: colors.income,
-                          opacity: isSelected ? 1 : 0.45,
-                        },
-                      ]}
-                    />
-                  )}
-                </View>
-                <View style={[styles.negativeZone, { height: negativeZone }]}>
-                  {!positive && (
-                    <View
-                      style={[
-                        styles.bar,
-                        styles.barNegative,
-                        {
-                          height: Math.max(barHeight, 3),
-                          backgroundColor: colors.expense,
-                          opacity: isSelected ? 1 : 0.45,
-                        },
-                      ]}
-                    />
-                  )}
-                </View>
-                <Text style={[styles.monthLabel, isSelected && styles.monthLabelSelected]}>
-                  {shortMonth(item.date)}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {data.map((item) => (
+            <Column
+              key={item.key}
+              item={item}
+              isSelected={item.key === selected.key}
+              positiveZone={positiveZone}
+              negativeZone={negativeZone}
+              maxPositive={maxPositive}
+              maxNegative={maxNegative}
+              onSelect={() => setSelectedKey(item.key)}
+            />
+          ))}
         </View>
       </View>
     </View>
+  );
+}
+
+function Column({
+  item,
+  isSelected,
+  positiveZone,
+  negativeZone,
+  maxPositive,
+  maxNegative,
+  onSelect,
+}: {
+  item: MonthlySavings;
+  isSelected: boolean;
+  positiveZone: number;
+  negativeZone: number;
+  maxPositive: number;
+  maxNegative: number;
+  onSelect: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const positive = item.savings >= 0;
+  const rawHeight = positive
+    ? maxPositive > 0
+      ? (item.savings / maxPositive) * positiveZone
+      : 0
+    : maxNegative > 0
+      ? (-item.savings / maxNegative) * negativeZone
+      : 0;
+  const targetHeight = positive
+    ? Math.max(rawHeight, item.savings > 0 ? 3 : 0)
+    : Math.max(rawHeight, 3);
+
+  const height = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(isSelected ? 1 : 0.45)).current;
+
+  useEffect(() => {
+    Animated.timing(height, {
+      toValue: targetHeight,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // height no es animable por el driver nativo
+    }).start();
+    // Se re-dispara con targetHeight a propósito: si cambian los datos del
+    // rango, la columna anima hacia el nuevo alto en vez de saltar.
+  }, [targetHeight, height]);
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: isSelected ? 1 : 0.45,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [isSelected, opacity]);
+
+  return (
+    <Pressable style={styles.column} onPress={onSelect}>
+      <View style={[styles.positiveZone, { height: positiveZone }]}>
+        {positive && (
+          <Animated.View
+            style={[styles.bar, styles.barPositive, { height, backgroundColor: colors.income, opacity }]}
+          />
+        )}
+      </View>
+      <View style={[styles.negativeZone, { height: negativeZone }]}>
+        {!positive && (
+          <Animated.View
+            style={[styles.bar, styles.barNegative, { height, backgroundColor: colors.expense, opacity }]}
+          />
+        )}
+      </View>
+      <Text style={[styles.monthLabel, isSelected && styles.monthLabelSelected]}>
+        {shortMonth(item.date)}
+      </Text>
+    </Pressable>
   );
 }
 
