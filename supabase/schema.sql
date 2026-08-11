@@ -231,3 +231,32 @@ create policy "savings_goal insert own" on public.savings_goal
   for insert with check (auth.uid() = user_id);
 create policy "savings_goal update own" on public.savings_goal
   for update using (auth.uid() = user_id);
+
+-- ── Foto mensual de patrimonio ───────────────────────────────────────────
+-- Una fila por usuario y mes. La del mes en curso se pisa (upsert) cada vez
+-- que se abre la app; las de meses cerrados quedan fijas. Sirve para
+-- graficar la evolución del patrimonio en el tiempo — sin esto no hay forma
+-- de saber cuánto valían las inversiones/propiedades en un mes pasado (el
+-- efectivo sí se puede reconstruir desde movements, pero current_price de
+-- positions y estimated_value de properties no tienen historial propio).
+
+create table public.wealth_snapshots (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  month_key text not null, -- "yyyy-mm"
+  cash_usd numeric not null,
+  investments_usd numeric not null,
+  properties_usd numeric not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, month_key)
+);
+
+alter table public.wealth_snapshots enable row level security;
+
+create policy "wealth_snapshots select own" on public.wealth_snapshots
+  for select using (auth.uid() = user_id);
+create policy "wealth_snapshots insert own" on public.wealth_snapshots
+  for insert with check (auth.uid() = user_id);
+create policy "wealth_snapshots update own" on public.wealth_snapshots
+  for update using (auth.uid() = user_id);
+create policy "wealth_snapshots delete own" on public.wealth_snapshots
+  for delete using (auth.uid() = user_id);

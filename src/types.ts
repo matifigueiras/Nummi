@@ -112,3 +112,17 @@ export interface DolarRate {
   /** ISO timestamp de la última actualización según la API */
   fechaActualizacion: string;
 }
+
+/**
+ * Foto mensual del patrimonio total (consolidado en USD), para poder
+ * graficar la evolución en el tiempo. Se guarda una por mes: la del mes en
+ * curso se pisa cada vez que se abre la app (refleja el último valor
+ * conocido); las de meses cerrados quedan fijas.
+ */
+export interface WealthSnapshot {
+  /** "yyyy-mm" */
+  monthKey: string;
+  cashUsd: number;
+  investmentsUsd: number;
+  propertiesUsd: number;
+}

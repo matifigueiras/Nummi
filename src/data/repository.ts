@@ -8,6 +8,7 @@ import {
   Property,
   RecurringMovement,
   SavingsGoal,
+  WealthSnapshot,
 } from '../types';
 import {
   mockAccounts,
@@ -74,6 +75,10 @@ export interface DataRepository {
   markRecurringApplied(recurringId: string, monthKey: string): Promise<void>;
   getSavingsGoal(): Promise<SavingsGoal>;
   setSavingsGoal(goal: SavingsGoal): Promise<SavingsGoal>;
+  /** Todas las fotos mensuales de patrimonio guardadas, para graficar la evolución */
+  getWealthSnapshots(): Promise<WealthSnapshot[]>;
+  /** Guarda (o pisa, si ya existe una para ese mes) una foto mensual de patrimonio */
+  saveWealthSnapshot(snapshot: WealthSnapshot): Promise<void>;
   /** Borra todo y vuelve a los datos de ejemplo */
   resetData(): Promise<void>;
 }
@@ -90,6 +95,8 @@ interface StoredData {
   positions: Position[];
   properties: Property[];
   savingsGoal: SavingsGoal;
+  /** Se agregó después de la v4 original: datos guardados antes no la tienen */
+  wealthSnapshots?: WealthSnapshot[];
 }
 
 export const STORAGE_KEY = 'nummi:data:v1';
@@ -106,6 +113,7 @@ function seed(): StoredData {
     positions: [...mockPositions],
     properties: [...mockProperties],
     savingsGoal: { ...mockSavingsGoal },
+    wealthSnapshots: [],
   };
 }
 
@@ -441,6 +449,17 @@ export class LocalStorageRepository implements DataRepository {
     state.savingsGoal = { ...goal };
     await this.persist();
     return { ...goal };
+  }
+
+  async getWealthSnapshots(): Promise<WealthSnapshot[]> {
+    return [...((await this.load()).wealthSnapshots ?? [])];
+  }
+
+  async saveWealthSnapshot(snapshot: WealthSnapshot): Promise<void> {
+    const state = await this.load();
+    const rest = (state.wealthSnapshots ?? []).filter((s) => s.monthKey !== snapshot.monthKey);
+    state.wealthSnapshots = [...rest, snapshot];
+    await this.persist();
   }
 
   async resetData(): Promise<void> {

@@ -13,6 +13,8 @@ import {
   propertyYieldPct,
   savingsByMonth,
   totalByCurrency,
+  wealthBreakdown,
+  wealthSnapshotTotal,
 } from '../calc';
 
 // Tipo de cambio fijo para que los tests no dependan de la cotización real
@@ -463,5 +465,59 @@ describe('monthlyInsight', () => {
 
   it('da null sin datos', () => {
     expect(monthlyInsight([], [])).toBeNull();
+  });
+});
+
+describe('wealthBreakdown', () => {
+  const account: Account = {
+    id: 'caja-usd',
+    name: 'Caja USD',
+    currency: 'USD',
+    initialBalance: 1000,
+  };
+  const position: Position = {
+    id: 'p1',
+    kind: 'accion',
+    ticker: 'AAPL',
+    name: 'Apple',
+    quantity: 10,
+    currency: 'USD',
+    buyPrice: 100,
+    currentPrice: 150,
+  };
+  const property: Property = {
+    id: 'r1',
+    name: 'Depto',
+    monthlyRent: 1000,
+    rentCurrency: 'USD',
+    monthlyExpenses: 0,
+    expensesCurrency: 'USD',
+    estimatedValue: 50_000,
+    valueCurrency: 'USD',
+  };
+
+  it('desglosa efectivo, inversiones y propiedades, todo consolidado en USD', () => {
+    const arsAccount: Account = { ...account, id: 'caja-ars', currency: 'ARS', initialBalance: RATE };
+    const result = wealthBreakdown([account, arsAccount], [], [position], [property], RATE);
+    // caja-usd: 1000 USD directo. caja-ars: RATE ARS / RATE = 1 USD
+    expect(result.cashUsd).toBe(1001);
+    expect(result.investmentsUsd).toBe(positionValue(position));
+    expect(result.propertiesUsd).toBe(50_000);
+  });
+
+  it('da todo en cero sin cuentas/posiciones/propiedades', () => {
+    expect(wealthBreakdown([], [], [], [], RATE)).toEqual({
+      cashUsd: 0,
+      investmentsUsd: 0,
+      propertiesUsd: 0,
+    });
+  });
+});
+
+describe('wealthSnapshotTotal', () => {
+  it('suma las tres partes de una foto mensual', () => {
+    expect(
+      wealthSnapshotTotal({ monthKey: '2026-08', cashUsd: 100, investmentsUsd: 200, propertiesUsd: 300 }),
+    ).toBe(600);
   });
 });

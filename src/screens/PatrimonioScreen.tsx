@@ -7,16 +7,17 @@ import { NewPositionModal } from '../components/NewPositionModal';
 import { NewPropertyModal } from '../components/NewPropertyModal';
 import { Screen } from '../components/Screen';
 import { WealthDonut } from '../components/WealthDonut';
+import { WealthTrend } from '../components/WealthTrend';
 import { useApp } from '../store/AppContext';
 import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Position, PositionKind, Property } from '../types';
-import { accountBalance, positionPnlPct, positionValue, propertyYieldPct } from '../utils/calc';
-import { formatMoney, formatPercent, formatRelativeTime, HIDDEN_AMOUNT, toUsd } from '../utils/format';
+import { positionPnlPct, positionValue, propertyYieldPct, wealthBreakdown } from '../utils/calc';
+import { formatMoney, formatPercent, formatRelativeTime, HIDDEN_AMOUNT } from '../utils/format';
 
 export function PatrimonioScreen() {
-  const { accounts, movements, positions, properties, dolar, livePrices } = useApp();
+  const { accounts, movements, positions, properties, dolar, livePrices, wealthSnapshots } = useApp();
   const { hidden } = usePrivacy();
   const styles = useThemedStyles(makeStyles);
   const [positionModal, setPositionModal] = useState<PositionKind | null>(null);
@@ -25,32 +26,9 @@ export function PatrimonioScreen() {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   // Todo el patrimonio se consolida en USD (referencia: blue venta).
-  const cashUsd = useMemo(
-    () =>
-      accounts.reduce(
-        (sum, account) =>
-          sum + toUsd(accountBalance(account, movements), account.currency, dolar.rate.venta),
-        0,
-      ),
-    [accounts, movements, dolar.rate.venta],
-  );
-
-  const investmentsUsd = useMemo(
-    () =>
-      positions.reduce(
-        (sum, p) => sum + toUsd(positionValue(p), p.currency, dolar.rate.venta),
-        0,
-      ),
-    [positions, dolar.rate.venta],
-  );
-
-  const propertiesUsd = useMemo(
-    () =>
-      properties.reduce(
-        (sum, p) => sum + toUsd(p.estimatedValue, p.valueCurrency, dolar.rate.venta),
-        0,
-      ),
-    [properties, dolar.rate.venta],
+  const { cashUsd, investmentsUsd, propertiesUsd } = useMemo(
+    () => wealthBreakdown(accounts, movements, positions, properties, dolar.rate.venta),
+    [accounts, movements, positions, properties, dolar.rate.venta],
   );
 
   const totalUsd = cashUsd + investmentsUsd + propertiesUsd;
@@ -78,6 +56,11 @@ export function PatrimonioScreen() {
         <View style={styles.breakdown}>
           <WealthDonut cash={cashUsd} investments={investmentsUsd} properties={propertiesUsd} />
         </View>
+      </Card>
+
+      <Card>
+        <Text style={styles.cardTitle}>Evolución del patrimonio</Text>
+        <WealthTrend snapshots={wealthSnapshots} />
       </Card>
 
       <Card style={styles.sectionCard}>
@@ -329,6 +312,12 @@ const makeStyles = (c: ThemeColors) =>
       fontSize: font.heading,
       fontWeight: '700',
       color: c.ink,
+    },
+    cardTitle: {
+      fontSize: font.heading,
+      fontWeight: '700',
+      color: c.ink,
+      marginBottom: spacing.lg,
     },
     addButton: {
       width: 32,

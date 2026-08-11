@@ -21,7 +21,9 @@ import {
   Property,
   RecurringMovement,
   SavingsGoal,
+  WealthSnapshot,
 } from '../types';
+import { wealthBreakdown } from '../utils/calc';
 import { pendingRecurrings, toMovement } from '../utils/recurring';
 import { monthKeyOf } from '../utils/format';
 
@@ -47,6 +49,8 @@ interface AppState {
   dolar: DolarBlue;
   dolarHistory: DolarHistory;
   livePrices: LivePricesState;
+  /** Fotos mensuales de patrimonio, para graficar la evolución en el tiempo */
+  wealthSnapshots: WealthSnapshot[];
   addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
   updateAccount: (account: Account) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
@@ -85,14 +89,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [livePrices, setLivePrices] = useState<LivePricesState>({ updatedAt: null, liveIds: [] });
+  const [wealthSnapshots, setWealthSnapshots] = useState<WealthSnapshot[]>([]);
   const dolar = useDolarBlue();
   const dolarHistory = useDolarHistory();
 
   // Ref para que el ciclo de precios lea siempre las posiciones actuales sin
   // re-suscribir el intervalo en cada cambio.
   const positionsRef = useRef<Position[]>([]);
+  // Mismo motivo: la foto de patrimonio necesita la cotización más nueva sin
+  // que captureWealthSnapshot tenga que cambiar de identidad en cada tick.
+  const dolarRef = useRef<DolarBlue | undefined>(undefined);
 
   positionsRef.current = positions;
+  dolarRef.current = dolar;
 
   const loadAll = useCallback(async () => {
     const [acc, movs, pos, props, goal, recs, cats, buds] = await Promise.all([
@@ -157,6 +166,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setMovements(await repository.getMovements());
   }, []);
 
+  // Guarda (pisa) la foto de patrimonio del mes en curso. Lee todo fresco del
+  // repositorio, no del estado de React, por el mismo motivo que
+  // applyRecurrings: puede correr apenas termina loadAll, antes de que el
+  // próximo render haya "visto" ese estado todavía.
+  const captureWealthSnapshot = useCallback(async () => {
+    const [accs, movs, pos, props] = await Promise.all([
+      repository.getAccounts(),
+      repository.getMovements(),
+      repository.getPositions(),
+      repository.getProperties(),
+    ]);
+    const ventaRate = dolarRef.current?.rate.venta ?? 1;
+    const breakdown = wealthBreakdown(accs, movs, pos, props, ventaRate);
+    await repository.saveWealthSnapshot({ monthKey: monthKeyOf(new Date()), ...breakdown });
+    setWealthSnapshots(await repository.getWealthSnapshots());
+  }, []);
+
   useEffect(() => {
     loadAll().then(() => {
       setLoading(false);
@@ -172,6 +198,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sub.remove();
     };
   }, [loadAll, refreshPrices, applyRecurrings]);
+
+  // La foto de patrimonio necesita la cotización real (no el fallback previo
+  // a la primera carga), así que espera a que el dólar termine de cargar —
+  // a diferencia de applyRecurrings/refreshPrices, que no dependen de eso.
+  // Se guarda una sola vez por sesión (no en cada refresco de precios).
+  const snapshotCapturedRef = useRef(false);
+  useEffect(() => {
+    if (loading || dolar.loading || snapshotCapturedRef.current) return;
+    snapshotCapturedRef.current = true;
+    captureWealthSnapshot();
+  }, [loading, dolar.loading, captureWealthSnapshot]);
 
   // Después de cada mutación se relee todo del repositorio: una sola fuente de
   // verdad y cero riesgo de que el estado local se desincronice.
@@ -335,6 +372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dolar,
       dolarHistory,
       livePrices,
+      wealthSnapshots,
       addAccount,
       updateAccount,
       deleteAccount,
@@ -371,6 +409,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dolar,
       dolarHistory,
       livePrices,
+      wealthSnapshots,
       addAccount,
       updateAccount,
       deleteAccount,

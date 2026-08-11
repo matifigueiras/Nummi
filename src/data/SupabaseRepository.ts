@@ -8,6 +8,7 @@ import {
   Property,
   RecurringMovement,
   SavingsGoal,
+  WealthSnapshot,
 } from '../types';
 import { DataRepository, NewTransfer } from './repository';
 import {
@@ -25,6 +26,8 @@ import {
   recurringFromDb,
   recurringToDb,
   savingsGoalFromDb,
+  wealthSnapshotFromDb,
+  wealthSnapshotToDb,
 } from './supabaseMappers';
 
 // Implementación de DataRepository sobre Supabase (ver supabase/schema.sql).
@@ -404,6 +407,20 @@ export class SupabaseRepository implements DataRepository {
     return goal;
   }
 
+  async getWealthSnapshots(): Promise<WealthSnapshot[]> {
+    const { data, error } = await supabase.from('wealth_snapshots').select('*').order('month_key');
+    if (error) throw error;
+    return (data ?? []).map(wealthSnapshotFromDb);
+  }
+
+  async saveWealthSnapshot(snapshot: WealthSnapshot): Promise<void> {
+    const userId = await requireUserId();
+    const { error } = await supabase
+      .from('wealth_snapshots')
+      .upsert(wealthSnapshotToDb(snapshot, userId), { onConflict: 'user_id,month_key' });
+    if (error) throw error;
+  }
+
   async resetData(): Promise<void> {
     // No hay un "seed" de ejemplo compartido en un backend multiusuario, así
     // que acá "resetear" borra lo transaccional pero conserva cuentas y
@@ -419,6 +436,7 @@ export class SupabaseRepository implements DataRepository {
       'positions',
       'properties',
       'savings_goal',
+      'wealth_snapshots',
     ] as const;
     for (const table of tables) {
       const { error } = await supabase.from(table).delete().eq('user_id', userId);

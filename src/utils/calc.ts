@@ -1,5 +1,5 @@
-import { Account, Budget, Currency, Movement, Position, Property } from '../types';
-import { monthKey, monthKeyOf } from './format';
+import { Account, Budget, Currency, Movement, Position, Property, WealthSnapshot } from '../types';
+import { monthKey, monthKeyOf, toUsd } from './format';
 
 // Cálculos puros de la app. Viven acá (y no dentro de las pantallas) para que
 // se puedan testear sin montar componentes.
@@ -213,6 +213,45 @@ export function propertyYieldPct(property: Property, ventaRate: number): number 
     toUsdAmount(property.monthlyRent, property.rentCurrency) -
     toUsdAmount(property.monthlyExpenses, property.expensesCurrency);
   return (netMonthlyUsd * 12 * 100) / valueUsd;
+}
+
+export interface WealthBreakdown {
+  cashUsd: number;
+  investmentsUsd: number;
+  propertiesUsd: number;
+}
+
+/**
+ * Patrimonio consolidado en USD, desglosado en efectivo / inversiones /
+ * propiedades (mismo criterio que el donut de Patrimonio: todo al blue
+ * venta). Usado tanto para mostrar el desglose de hoy como para guardar la
+ * foto mensual (ver WealthSnapshot).
+ */
+export function wealthBreakdown(
+  accounts: Account[],
+  movements: Movement[],
+  positions: Position[],
+  properties: Property[],
+  ventaRate: number,
+): WealthBreakdown {
+  const cashUsd = accounts.reduce(
+    (sum, a) => sum + toUsd(accountBalance(a, movements), a.currency, ventaRate),
+    0,
+  );
+  const investmentsUsd = positions.reduce(
+    (sum, p) => sum + toUsd(positionValue(p), p.currency, ventaRate),
+    0,
+  );
+  const propertiesUsd = properties.reduce(
+    (sum, p) => sum + toUsd(p.estimatedValue, p.valueCurrency, ventaRate),
+    0,
+  );
+  return { cashUsd, investmentsUsd, propertiesUsd };
+}
+
+/** Total de una foto mensual de patrimonio (suma de las tres partes) */
+export function wealthSnapshotTotal(snapshot: WealthSnapshot): number {
+  return snapshot.cashUsd + snapshot.investmentsUsd + snapshot.propertiesUsd;
 }
 
 /**

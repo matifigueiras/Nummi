@@ -10,6 +10,7 @@ import {
   Property,
   RecurringMovement,
   SavingsGoal,
+  WealthSnapshot,
 } from '../types';
 
 // Conversión entre las filas de Postgres (snake_case, tal como las define
@@ -223,4 +224,30 @@ export interface SavingsGoalRow {
 
 export function savingsGoalFromDb(row: SavingsGoalRow | null): SavingsGoal {
   return row ? { currency: row.currency, amount: row.amount } : { currency: 'ARS', amount: 0 };
+}
+
+export interface WealthSnapshotRow {
+  month_key: string;
+  cash_usd: number;
+  investments_usd: number;
+  properties_usd: number;
+}
+
+export function wealthSnapshotFromDb(row: WealthSnapshotRow): WealthSnapshot {
+  return {
+    monthKey: row.month_key,
+    cashUsd: row.cash_usd,
+    investmentsUsd: row.investments_usd,
+    propertiesUsd: row.properties_usd,
+  };
+}
+
+export function wealthSnapshotToDb(snapshot: WealthSnapshot, userId: string) {
+  return {
+    user_id: userId,
+    month_key: snapshot.monthKey,
+    cash_usd: snapshot.cashUsd,
+    investments_usd: snapshot.investmentsUsd,
+    properties_usd: snapshot.propertiesUsd,
+  };
 }

@@ -13,6 +13,8 @@ import {
   recurringFromDb,
   recurringToDb,
   savingsGoalFromDb,
+  wealthSnapshotFromDb,
+  wealthSnapshotToDb,
 } from '../supabaseMappers';
 
 describe('accounts', () => {
@@ -172,5 +174,29 @@ describe('savingsGoalFromDb', () => {
   // Un usuario nuevo no tiene fila de meta todavía (nadie la sembró)
   it('da un default cuando no hay fila (usuario sin meta configurada)', () => {
     expect(savingsGoalFromDb(null)).toEqual({ currency: 'ARS', amount: 0 });
+  });
+});
+
+describe('wealth snapshots', () => {
+  it('ida y vuelta sin perder datos', () => {
+    const snapshot = wealthSnapshotFromDb({
+      month_key: '2026-08',
+      cash_usd: 10_000,
+      investments_usd: 5_000,
+      properties_usd: 150_000,
+    });
+    expect(snapshot).toEqual({
+      monthKey: '2026-08',
+      cashUsd: 10_000,
+      investmentsUsd: 5_000,
+      propertiesUsd: 150_000,
+    });
+    expect(wealthSnapshotToDb(snapshot, 'u1')).toEqual({
+      user_id: 'u1',
+      month_key: '2026-08',
+      cash_usd: 10_000,
+      investments_usd: 5_000,
+      properties_usd: 150_000,
+    });
   });
 });
