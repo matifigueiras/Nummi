@@ -4,7 +4,6 @@ import { Feather } from '@expo/vector-icons';
 import { BudgetsCard } from '../components/BudgetsCard';
 import { Card } from '../components/Card';
 import { Donut } from '../components/Donut';
-import { HideBalanceButton } from '../components/HideBalanceButton';
 import { IncomeExpenseTrend } from '../components/IncomeExpenseTrend';
 import { InsightCard } from '../components/InsightCard';
 import { MonthNav } from '../components/MonthNav';
@@ -125,13 +124,10 @@ export function HomeScreen() {
       />
 
       <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.greeting}>
-            {greeting()}, {USER_NAME}
-          </Text>
-          <Text style={styles.subtitle}>Este es el resumen de tu mes</Text>
-        </View>
-        <HideBalanceButton />
+        <Text style={styles.greeting}>
+          {greeting()}, {USER_NAME}
+        </Text>
+        <Text style={styles.subtitle}>Este es el resumen de tu mes</Text>
       </View>
 
       <View style={styles.dolarRow}>
@@ -230,9 +226,7 @@ export function HomeScreen() {
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     headerRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
+      flexDirection: 'column',
     },
     greeting: {
       fontSize: font.title,
