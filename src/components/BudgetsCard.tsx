@@ -49,11 +49,17 @@ export function BudgetsCard({ progress, editable }: Props) {
       </View>
 
       {progress.length === 0 ? (
-        <Pressable onPress={() => editable && setShowModal(true)}>
+        <View>
           <Text style={styles.empty}>
             Poné un límite mensual a las categorías que querés controlar y mirá cuánto te queda.
           </Text>
-        </Pressable>
+          {editable && (
+            <Pressable style={styles.createButton} onPress={() => setShowModal(true)}>
+              <Feather name="plus" size={16} color="#FFFFFF" />
+              <Text style={styles.createButtonLabel}>Crear presupuesto</Text>
+            </Pressable>
+          )}
+        </View>
       ) : (
         <View style={styles.list}>
           {progress.map((item) => (
@@ -162,6 +168,21 @@ const makeStyles = (c: ThemeColors) =>
       fontSize: font.label,
       color: c.muted,
       lineHeight: 19,
+    },
+    createButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+      backgroundColor: c.accent,
+      borderRadius: radius.md,
+      paddingVertical: spacing.md,
+      marginTop: spacing.lg,
+    },
+    createButtonLabel: {
+      fontSize: font.label,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
     list: {
       gap: spacing.lg,
