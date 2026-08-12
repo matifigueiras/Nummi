@@ -124,8 +124,6 @@ export function HomeScreen() {
         nextDisabled={isCurrentMonth}
       />
 
-      <TotalBalanceCard />
-
       <View style={styles.headerRow}>
         <View>
           <Text style={styles.greeting}>
@@ -166,6 +164,8 @@ export function HomeScreen() {
             ))}
         </View>
       </View>
+
+      <TotalBalanceCard />
 
       <View style={styles.grid}>
         <StatTile
