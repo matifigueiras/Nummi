@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { Position } from '../types';
 
 // Precios en vivo para posiciones, con fuentes gratuitas y sin API key:
@@ -6,7 +7,12 @@ import { Position } from '../types';
 // - Acciones y CEDEARs argentinos (ARS): data912.com
 // Si un ticker no aparece en su fuente, conserva el precio cargado a mano.
 
-const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price';
+// CoinGecko no manda Access-Control-Allow-Origin, así que el navegador
+// bloquea el fetch directo (CORS) — en web pasa por /api/crypto-prices
+// (serverless function de Vercel, ver api/crypto-prices.js) que sí puede
+// pegarle server-to-server. En nativo no hay CORS, así que va directo.
+const COINGECKO_URL =
+  Platform.OS === 'web' ? '/api/crypto-prices' : 'https://api.coingecko.com/api/v3/simple/price';
 const DATA912_USA_URL = 'https://data912.com/live/usa_stocks';
 const DATA912_ARG_URL = 'https://data912.com/live/arg_stocks';
 
