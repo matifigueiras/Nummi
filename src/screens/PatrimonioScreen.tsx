@@ -5,15 +5,23 @@ import { Card } from '../components/Card';
 import { HideBalanceButton } from '../components/HideBalanceButton';
 import { NewPositionModal } from '../components/NewPositionModal';
 import { NewPropertyModal } from '../components/NewPropertyModal';
+import { PositionSparkline } from '../components/PositionSparkline';
 import { Screen } from '../components/Screen';
 import { WealthDonut } from '../components/WealthDonut';
 import { WealthTrend } from '../components/WealthTrend';
+import { YieldComparison, YieldItem } from '../components/YieldComparison';
 import { useApp } from '../store/AppContext';
 import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { Position, PositionKind, Property } from '../types';
-import { positionPnlPct, positionValue, propertyYieldPct, wealthBreakdown } from '../utils/calc';
+import {
+  investmentsReturnPct,
+  positionPnlPct,
+  positionValue,
+  propertyYieldPct,
+  wealthBreakdown,
+} from '../utils/calc';
 import { formatMoney, formatPercent, formatRelativeTime, HIDDEN_AMOUNT } from '../utils/format';
 
 export function PatrimonioScreen() {
@@ -35,6 +43,19 @@ export function PatrimonioScreen() {
 
   const stocks = positions.filter((p) => p.kind === 'accion');
   const crypto = positions.filter((p) => p.kind === 'cripto');
+
+  // Compara, en barras, el yield de cada propiedad contra el retorno
+  // ponderado de toda la cartera de inversiones (acciones + cripto juntas).
+  const yieldItems: YieldItem[] = useMemo(() => {
+    const items: YieldItem[] = properties.map((p) => ({
+      label: p.name,
+      pct: propertyYieldPct(p, dolar.rate.venta),
+    }));
+    if (positions.length > 0) {
+      items.push({ label: 'Inversiones', pct: investmentsReturnPct(positions, dolar.rate.venta) });
+    }
+    return items;
+  }, [properties, positions, dolar.rate.venta]);
 
   return (
     <Screen>
@@ -62,6 +83,13 @@ export function PatrimonioScreen() {
         <Text style={styles.cardTitle}>Evolución del patrimonio</Text>
         <WealthTrend snapshots={wealthSnapshots} />
       </Card>
+
+      {yieldItems.length > 0 && (
+        <Card>
+          <Text style={styles.cardTitle}>Rendimiento</Text>
+          <YieldComparison items={yieldItems} />
+        </Card>
+      )}
 
       <Card style={styles.sectionCard}>
         <SectionHeader title="Acciones" onAdd={() => setPositionModal('accion')} />
@@ -183,6 +211,7 @@ function PositionRow({
           </Text>
         </View>
       </View>
+      <PositionSparkline buyPrice={position.buyPrice} currentPrice={position.currentPrice} gain={gain} />
       <View style={styles.rowRight}>
         <Text style={styles.rowValue}>{formatMoney(value, position.currency)}</Text>
         <View

@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { AccountModal } from '../components/AccountModal';
 import { AccountPicker } from '../components/AccountPicker';
 import { Card } from '../components/Card';
+import { CategoryTrend } from '../components/CategoryTrend';
 import { FormInput } from '../components/form';
 import { HideBalanceButton } from '../components/HideBalanceButton';
 import { MonthNav } from '../components/MonthNav';
@@ -17,6 +18,7 @@ import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
 import {
   accountBalanceAt,
+  categoryAmountsByMonth,
   constantRate,
   expensesByCategory,
   monthStats,
@@ -35,6 +37,8 @@ import {
 import { searchMovements } from '../utils/search';
 
 const MAX_CATEGORIES = 5;
+const TREND_CATEGORIES = 3;
+const TREND_MONTHS = 6;
 
 function startOfMonth(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -106,6 +110,17 @@ export function CuentasScreen() {
   const categories = useMemo(
     () => expensesByCategory(accountMovements, monthKeyValue, MAX_CATEGORIES),
     [accountMovements, monthKeyValue],
+  );
+
+  // Categorías a trackear en el gráfico de evolución: las top del mes
+  // elegido, sin "Otras" (que agrupa el resto y no es una categoría real).
+  const trendCategories = useMemo(
+    () => categories.filter((c) => c.category !== 'Otras').slice(0, TREND_CATEGORIES).map((c) => c.category),
+    [categories],
+  );
+  const categoryTrend = useMemo(
+    () => categoryAmountsByMonth(accountMovements, month, TREND_MONTHS, trendCategories),
+    [accountMovements, month, trendCategories],
   );
 
   const sameCurrencyCount = accounts.filter((a) => a.currency === currency).length;
@@ -208,6 +223,13 @@ export function CuentasScreen() {
               />
             ))}
           </View>
+        </Card>
+      )}
+
+      {trendCategories.length > 0 && (
+        <Card>
+          <Text style={styles.widgetTitle}>Categorías en el tiempo</Text>
+          <CategoryTrend data={categoryTrend} categories={trendCategories} />
         </Card>
       )}
 

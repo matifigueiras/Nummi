@@ -140,6 +140,44 @@ export function expensesByCategory(
   return top;
 }
 
+export interface MonthlyCategoryAmounts {
+  /** "yyyy-mm" */
+  key: string;
+  /** Primer día del mes, para formatear */
+  date: Date;
+  /** Categoría → gasto de ese mes (0 si no hubo) */
+  amounts: Record<string, number>;
+}
+
+/**
+ * Gasto mensual de una lista fija de categorías, de los últimos `count`
+ * meses terminando en `endMonth` (incluido). A diferencia de
+ * `expensesByCategory`, no recalcula cuáles son las categorías "top" en cada
+ * mes — usa siempre las mismas, para que una serie del gráfico no cambie de
+ * identidad mes a mes.
+ */
+export function categoryAmountsByMonth(
+  movements: Movement[],
+  endMonth: Date,
+  count: number,
+  categories: string[],
+): MonthlyCategoryAmounts[] {
+  const result: MonthlyCategoryAmounts[] = [];
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const date = new Date(endMonth.getFullYear(), endMonth.getMonth() - offset, 1);
+    const key = monthKeyOf(date);
+    const amounts: Record<string, number> = Object.fromEntries(categories.map((c) => [c, 0]));
+    for (const mov of movements) {
+      if (!isCountedAsFlow(mov) || mov.type !== 'gasto') continue;
+      if (monthKey(mov.date) !== key) continue;
+      if (!(mov.category in amounts)) continue;
+      amounts[mov.category] += mov.amount;
+    }
+    result.push({ key, date, amounts });
+  }
+  return result;
+}
+
 export interface BudgetProgress {
   category: string;
   /** Límite mensual, en ARS */
@@ -215,6 +253,24 @@ export function propertyYieldPct(property: Property, ventaRate: number): number 
     toUsdAmount(property.monthlyRent, property.rentCurrency) -
     toUsdAmount(property.monthlyExpenses, property.expensesCurrency);
   return (netMonthlyUsd * 12 * 100) / valueUsd;
+}
+
+/**
+ * Retorno % promedio de todas las posiciones (acciones + cripto), ponderado
+ * por el valor actual de cada una en USD. Sirve para comparar contra el
+ * yield de las propiedades, aunque uno sea ganancia de capital y el otro
+ * renta — da una idea rápida de qué parte de la cartera está rindiendo más.
+ */
+export function investmentsReturnPct(positions: Position[], ventaRate: number): number {
+  let totalValueUsd = 0;
+  let weightedPnl = 0;
+  for (const position of positions) {
+    const valueUsd = toUsd(positionValue(position), position.currency, ventaRate);
+    totalValueUsd += valueUsd;
+    weightedPnl += valueUsd * positionPnlPct(position);
+  }
+  if (totalValueUsd === 0) return 0;
+  return weightedPnl / totalValueUsd;
 }
 
 export interface WealthBreakdown {

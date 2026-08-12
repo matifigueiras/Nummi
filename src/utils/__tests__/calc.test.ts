@@ -3,9 +3,11 @@ import {
   accountBalance,
   accountBalanceAt,
   budgetProgress,
+  categoryAmountsByMonth,
   constantRate,
   expensesByCategory,
   incomeExpenseByMonth,
+  investmentsReturnPct,
   monthlyInsight,
   monthStats,
   percentDelta,
@@ -255,6 +257,29 @@ describe('expensesByCategory', () => {
   });
 });
 
+describe('categoryAmountsByMonth', () => {
+  const movements = [
+    movement({ id: '1', category: 'Comida', amount: 5000, date: '2026-08-10' }),
+    movement({ id: '2', category: 'Vivienda', amount: 3000, date: '2026-08-15' }),
+    movement({ id: '3', category: 'Comida', amount: 4000, date: '2026-07-10' }),
+    // categoría fuera de la lista pedida: se ignora
+    movement({ id: '4', category: 'Salidas', amount: 999, date: '2026-08-05' }),
+  ];
+
+  it('mantiene la misma lista de categorías en todos los meses, en cero si no hubo gasto', () => {
+    const result = categoryAmountsByMonth(movements, new Date(2026, 7, 1), 2, ['Comida', 'Vivienda']);
+    expect(result).toEqual([
+      { key: '2026-07', date: new Date(2026, 6, 1), amounts: { Comida: 4000, Vivienda: 0 } },
+      { key: '2026-08', date: new Date(2026, 7, 1), amounts: { Comida: 5000, Vivienda: 3000 } },
+    ]);
+  });
+
+  it('ignora categorías que no están en la lista pedida', () => {
+    const result = categoryAmountsByMonth(movements, new Date(2026, 7, 1), 1, ['Comida']);
+    expect(result[0].amounts).toEqual({ Comida: 5000 });
+  });
+});
+
 describe('budgetProgress', () => {
   const budgets = [{ category: 'Comida', amount: 200_000 }];
 
@@ -351,6 +376,24 @@ describe('posiciones', () => {
 
   it('no divide por cero si el precio de compra es 0', () => {
     expect(positionPnlPct(position({ buyPrice: 0 }))).toBe(0);
+  });
+
+  it('pondera el retorno por el valor actual de cada posición', () => {
+    const result = investmentsReturnPct(
+      [
+        // 1500 USD de valor, +50%
+        position({ quantity: 10, buyPrice: 100, currentPrice: 150 }),
+        // 2700 USD de valor, -10% — pesa más por ser la posición más grande
+        position({ id: 'p2', quantity: 30, buyPrice: 100, currentPrice: 90 }),
+      ],
+      RATE,
+    );
+    // (1500*50 + 2700*-10) / 4200 ≈ 11.43
+    expect(result).toBeCloseTo(80 / 7, 5);
+  });
+
+  it('da cero sin posiciones', () => {
+    expect(investmentsReturnPct([], RATE)).toBe(0);
   });
 });
 
