@@ -74,6 +74,8 @@ interface AppState {
   updateSavingsGoal: (goal: SavingsGoal) => Promise<void>;
   /** Borra todo lo guardado y vuelve a los datos de ejemplo */
   resetData: () => Promise<void>;
+  /** Recarga todo desde el repositorio + cotización + precios en vivo (pull-to-refresh) */
+  refreshAll: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -358,6 +360,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await loadAll();
   }, [loadAll]);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadAll(), refreshPrices(), dolar.refresh()]);
+  }, [loadAll, refreshPrices, dolar]);
+
   const value = useMemo(
     () => ({
       loading,
@@ -395,6 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteRecurring,
       updateSavingsGoal,
       resetData,
+      refreshAll,
     }),
     [
       loading,
@@ -432,6 +439,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteRecurring,
       updateSavingsGoal,
       resetData,
+      refreshAll,
     ],
   );
 

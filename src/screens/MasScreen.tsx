@@ -18,7 +18,7 @@ import { font, radius, spacing, ThemeColors } from '../theme';
 
 export function MasScreen() {
   const { mode, setMode, colors } = useTheme();
-  const { resetData } = useApp();
+  const { resetData, refreshAll } = useApp();
   const { session, signOut } = useAuth();
   const styles = useThemedStyles(makeStyles);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -30,7 +30,7 @@ export function MasScreen() {
   const email = session?.user.email ?? '';
 
   return (
-    <Screen>
+    <Screen onRefresh={refreshAll}>
       <Text style={styles.title}>Más</Text>
 
       <Card style={styles.profileCard}>
