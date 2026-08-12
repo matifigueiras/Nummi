@@ -50,7 +50,7 @@ function startOfMonth(date: Date): Date {
 }
 
 export function HomeScreen() {
-  const { movements, savingsGoal, budgets, dolar, dolarHistory } = useApp();
+  const { movements, savingsGoal, budgets, dolar, dolarHistory, refreshAll } = useApp();
   const { hidden } = usePrivacy();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -116,7 +116,7 @@ export function HomeScreen() {
   );
 
   return (
-    <Screen>
+    <Screen onRefresh={refreshAll}>
       <MonthNav
         month={month}
         onPrev={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}

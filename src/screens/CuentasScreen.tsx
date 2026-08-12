@@ -45,7 +45,7 @@ function startOfMonth(date: Date): Date {
 }
 
 export function CuentasScreen() {
-  const { accounts, movements, dolar, dolarHistory } = useApp();
+  const { accounts, movements, dolar, dolarHistory, refreshAll } = useApp();
   const { hidden } = usePrivacy();
   const styles = useThemedStyles(makeStyles);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export function CuentasScreen() {
   );
 
   return (
-    <Screen>
+    <Screen onRefresh={refreshAll}>
       <Text style={styles.title}>Cuentas</Text>
 
       <AccountPicker

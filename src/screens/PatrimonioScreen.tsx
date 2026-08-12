@@ -25,7 +25,8 @@ import {
 import { formatMoney, formatPercent, formatRelativeTime, HIDDEN_AMOUNT } from '../utils/format';
 
 export function PatrimonioScreen() {
-  const { accounts, movements, positions, properties, dolar, livePrices, wealthSnapshots } = useApp();
+  const { accounts, movements, positions, properties, dolar, livePrices, wealthSnapshots, refreshAll } =
+    useApp();
   const { hidden } = usePrivacy();
   const styles = useThemedStyles(makeStyles);
   const [positionModal, setPositionModal] = useState<PositionKind | null>(null);
@@ -58,7 +59,7 @@ export function PatrimonioScreen() {
   }, [properties, positions, dolar.rate.venta]);
 
   return (
-    <Screen>
+    <Screen onRefresh={refreshAll}>
       <Text style={styles.title}>Patrimonio</Text>
 
       <Card>
