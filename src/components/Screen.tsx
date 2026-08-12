@@ -102,7 +102,14 @@ export function Screen({ children, onRefresh }: Props) {
         </View>
       )}
       <ScrollView
-        style={[styles.scroll, { transform: [{ translateY: refreshing ? PULL_THRESHOLD * 0.6 : pull }] }]}
+        style={[
+          styles.scroll,
+          // Sólo se aplica el transform mientras hace falta: dejarlo puesto
+          // en translateY(0) de forma permanente le crea a Safari una capa
+          // de composición aparte, que deja una costura/línea visible en el
+          // borde de abajo del ScrollView incluso en reposo.
+          showIndicator && { transform: [{ translateY: refreshing ? PULL_THRESHOLD * 0.6 : pull }] },
+        ]}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + spacing.xl, paddingBottom: 120 },
