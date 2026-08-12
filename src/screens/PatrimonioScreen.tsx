@@ -202,13 +202,9 @@ function PositionRow({
         <Text style={styles.tickerText}>{position.ticker.slice(0, 4)}</Text>
       </View>
       <View style={styles.rowInfo}>
-        <Text style={styles.rowTitle}>{position.name}</Text>
         <View style={styles.rowMetaLine}>
-          {live && <View style={styles.liveDot} />}
-          <Text style={styles.rowMeta}>
-            {position.quantity} × {formatMoney(position.currentPrice, position.currency)} · compra{' '}
-            {formatMoney(position.buyPrice, position.currency)}
-          </Text>
+          {live && <View style={[styles.liveDot, styles.rowLiveDot]} />}
+          <Text style={styles.rowTitle}>{position.name}</Text>
         </View>
       </View>
       <PositionSparkline buyPrice={position.buyPrice} currentPrice={position.currentPrice} gain={gain} />
@@ -250,10 +246,6 @@ function PropertyRow({
       </View>
       <View style={styles.rowInfo}>
         <Text style={styles.rowTitle}>{property.name}</Text>
-        <Text style={styles.rowMeta}>
-          Alquiler {formatMoney(property.monthlyRent, property.rentCurrency)} · Gastos{' '}
-          {formatMoney(property.monthlyExpenses, property.expensesCurrency)}
-        </Text>
       </View>
       <View style={styles.rowRight}>
         <Text style={styles.rowValue}>
@@ -311,6 +303,9 @@ const makeStyles = (c: ThemeColors) =>
       borderRadius: 3,
       backgroundColor: c.accent,
     },
+    rowLiveDot: {
+      marginTop: 6,
+    },
     liveText: {
       fontSize: font.caption,
       fontWeight: '600',
@@ -318,7 +313,7 @@ const makeStyles = (c: ThemeColors) =>
     },
     rowMetaLine: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 5,
     },
     breakdown: {
@@ -389,10 +384,6 @@ const makeStyles = (c: ThemeColors) =>
       fontSize: font.body,
       fontWeight: '600',
       color: c.ink,
-    },
-    rowMeta: {
-      fontSize: font.caption + 1,
-      color: c.muted,
     },
     rowRight: {
       alignItems: 'flex-end',
