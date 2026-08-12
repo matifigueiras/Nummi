@@ -236,7 +236,7 @@ verificado en el navegador, typecheck limpio y tests en verde en cada paso
     seria/directa, y hoy no hay tracking diario de presupuesto para
     sostener la lógica de "racha".
 
-## 0.6. Evolución del patrimonio + deploy web — EN CURSO (2026-08-11)
+## 0.6. Evolución del patrimonio + deploy web — COMPLETO (2026-08-11)
 
 Dos pedidos de Mati en la misma sesión: (a) un gráfico de patrimonio en el
 tiempo, y (b) usar Nummi como página web (no como app) para acceder desde
@@ -294,14 +294,32 @@ después de un rato considerable, ahí sí vale la pena escribirle a soporte
 de Supabase**, pero por ahora no es motivo de alarma ni de seguir
 investigando.
 
-### Deploy web (Vercel) — no arrancado todavía
-Mati eligió **Vercel** (recomendada) sobre Netlify cuando se le preguntó.
-Nada hecho todavía: falta armar el build estático de Expo Web, la config de
-Vercel, que Mati cree su cuenta y conecte el proyecto, cargar las env vars
-(`EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY`) en el dashboard
-de Vercel, y agregar la URL pública resultante a la lista de Redirect URLs
-permitidas en Supabase (Authentication → URL Configuration) — mismo paso que
-se hizo para `http://localhost:8081` en la migración original (sección 0).
+### Deploy web (Vercel) — COMPLETO, verificado end-to-end
+Mati eligió **Vercel** (recomendada) sobre Netlify. Repo pusheado a
+`https://github.com/matifigueiras/Nummi` (instaló y autenticó `gh` CLI para
+poder pushear, ver detalle abajo), conectado a Vercel vía GitHub (proyecto
+`nummi1/nummi`), con `vercel.json` (`buildCommand: npx expo export -p web`,
+`outputDirectory: dist`, rewrite SPA a `/index.html`) detectado automático.
+Env vars `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` cargadas
+en el dashboard de Vercel. URL pública agregada a Supabase (Authentication →
+URL Configuration → Redirect URLs) junto al `http://localhost:8081` ya
+existente.
+
+**URL de producción: https://nummi-woad.vercel.app**
+
+Verificado en el navegador real: login con magic-code funcionando (código
+llegó al mail, se pudo entrar), Home cargó con datos reales (dólar blue,
+ingresos/gastos, insight automático, donut de composición), sin errores en
+consola. Cualquier push futuro a `main` en GitHub dispara un redeploy
+automático en Vercel.
+
+**Nota sobre `gh` CLI**: esta Mac es Apple Silicon (arm64). El primer intento
+de descarga de Mati fue el build `amd64` (Intel), que tira `bad CPU type in
+executable`. El build correcto está en
+`https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_macOS_arm64.zip`
+— quedó descomprimido en `/Users/mati/Downloads/gh_arm64/`. Autenticado vía
+`gh auth login --web` (device code) + `gh auth setup-git` para que git use
+las credenciales de `gh` como credential helper.
 
 ## 1. Funcionalidades confirmadas y funcionando
 
