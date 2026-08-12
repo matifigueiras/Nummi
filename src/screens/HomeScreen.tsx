@@ -12,6 +12,7 @@ import { SavingsGoalModal } from '../components/SavingsGoalModal';
 import { SavingsTrend } from '../components/SavingsTrend';
 import { Screen } from '../components/Screen';
 import { StatTile } from '../components/StatTile';
+import { TotalBalanceCard } from '../components/TotalBalanceCard';
 import { useApp } from '../store/AppContext';
 import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
@@ -122,6 +123,8 @@ export function HomeScreen() {
         onNext={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
         nextDisabled={isCurrentMonth}
       />
+
+      <TotalBalanceCard />
 
       <View style={styles.headerRow}>
         <View>
