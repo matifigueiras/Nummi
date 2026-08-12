@@ -26,7 +26,7 @@ export function YieldComparison({ items }: Props) {
   if (items.length === 0) return null;
 
   return (
-    <View style={s.row}>
+    <View style={s.list}>
       {items.map((item) => {
         const gain = item.pct >= 0;
         return (
@@ -53,18 +53,18 @@ export function YieldComparison({ items }: Props) {
 
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.lg,
+    list: {
+      gap: spacing.md,
     },
     item: {
-      flexGrow: 1,
-      flexBasis: '28%',
-      gap: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: spacing.md,
     },
     label: {
-      fontSize: font.caption,
+      flex: 1,
+      fontSize: font.body,
       color: c.secondary,
     },
     valueRow: {
@@ -73,7 +73,7 @@ const makeStyles = (c: ThemeColors) =>
       gap: 2,
     },
     value: {
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },

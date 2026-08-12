@@ -129,7 +129,7 @@ function MonthColumn({
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     header: {
-      marginBottom: spacing.md,
+      marginBottom: spacing.xxl + spacing.lg,
     },
     selectedMonth: {
       fontSize: font.label,
