@@ -5,13 +5,13 @@ import {
   budgetProgress,
   constantRate,
   expensesByCategory,
+  incomeExpenseByMonth,
   monthlyInsight,
   monthStats,
   percentDelta,
   positionPnlPct,
   positionValue,
   propertyYieldPct,
-  savingsByMonth,
   totalByCurrency,
   wealthBreakdown,
   wealthSnapshotTotal,
@@ -93,26 +93,20 @@ describe('monthStats', () => {
   });
 });
 
-describe('savingsByMonth', () => {
+describe('incomeExpenseByMonth', () => {
   const movements = [
     movement({ id: '1', type: 'ingreso', amount: 10_000, date: '2026-08-10' }),
     movement({ id: '2', type: 'gasto', amount: 4_000, date: '2026-08-20' }),
     movement({ id: '3', type: 'gasto', amount: 3_000, date: '2026-07-15' }),
   ];
 
-  it('devuelve los meses del más viejo al más nuevo, terminando en el pedido', () => {
-    const result = savingsByMonth(movements, new Date(2026, 7, 1), 3, rate);
-    expect(result.map((r) => r.key)).toEqual(['2026-06', '2026-07', '2026-08']);
-  });
-
-  it('calcula el ahorro de cada mes y deja en cero los meses sin movimientos', () => {
-    const result = savingsByMonth(movements, new Date(2026, 7, 1), 3, rate);
-    expect(result.map((r) => r.savings)).toEqual([0, -3000, 6000]);
-  });
-
-  it('cruza el cambio de año hacia atrás', () => {
-    const result = savingsByMonth([], new Date(2026, 1, 1), 3, rate);
-    expect(result.map((r) => r.key)).toEqual(['2025-12', '2026-01', '2026-02']);
+  it('separa ingresos y gastos de cada mes, en cero si no hay movimientos', () => {
+    const result = incomeExpenseByMonth(movements, new Date(2026, 7, 1), 3, rate);
+    expect(result).toEqual([
+      { key: '2026-06', date: new Date(2026, 5, 1), income: 0, expense: 0 },
+      { key: '2026-07', date: new Date(2026, 6, 1), income: 0, expense: 3000 },
+      { key: '2026-08', date: new Date(2026, 7, 1), income: 10000, expense: 4000 },
+    ]);
   });
 });
 

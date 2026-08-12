@@ -5,11 +5,11 @@ import { BudgetsCard } from '../components/BudgetsCard';
 import { Card } from '../components/Card';
 import { Donut } from '../components/Donut';
 import { HideBalanceButton } from '../components/HideBalanceButton';
+import { IncomeExpenseTrend } from '../components/IncomeExpenseTrend';
 import { InsightCard } from '../components/InsightCard';
 import { MonthNav } from '../components/MonthNav';
 import { PercentageDelta } from '../components/PercentageDelta';
 import { SavingsGoalModal } from '../components/SavingsGoalModal';
-import { SavingsTrend } from '../components/SavingsTrend';
 import { Screen } from '../components/Screen';
 import { StatTile } from '../components/StatTile';
 import { TotalBalanceCard } from '../components/TotalBalanceCard';
@@ -20,10 +20,10 @@ import { font, radius, spacing, ThemeColors } from '../theme';
 import {
   budgetProgress,
   expensesByCategory,
+  incomeExpenseByMonth,
   monthlyInsight,
   monthStats,
   percentDelta,
-  savingsByMonth,
 } from '../utils/calc';
 import {
   formatMoney,
@@ -78,7 +78,7 @@ export function HomeScreen() {
   );
 
   const trend = useMemo(
-    () => savingsByMonth(movements, month, TREND_MONTHS, rateForDate),
+    () => incomeExpenseByMonth(movements, month, TREND_MONTHS, rateForDate),
     [movements, month, rateForDate],
   );
   // Porcentaje real (puede superar 100%); la barra visual se recorta a 100%
@@ -218,8 +218,8 @@ export function HomeScreen() {
       <BudgetsCard progress={progress} editable={isCurrentMonth} />
 
       <Card>
-        <Text style={styles.cardTitle}>Ahorro por mes</Text>
-        <SavingsTrend key={monthKeyOf(month)} data={trend} />
+        <Text style={styles.cardTitle}>Ingresos y gastos por mes</Text>
+        <IncomeExpenseTrend key={monthKeyOf(month)} data={trend} />
       </Card>
 
       <SavingsGoalModal visible={showGoalModal} onClose={() => setShowGoalModal(false)} />

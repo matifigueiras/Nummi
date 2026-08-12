@@ -50,29 +50,31 @@ export function monthStats(movements: Movement[], key: string, rateForDate: Rate
   return { income, expense, savings: income - expense };
 }
 
-export interface MonthlySavings {
+export interface MonthlyIncomeExpense {
   /** "yyyy-mm" */
   key: string;
   /** Primer día del mes, para formatear */
   date: Date;
-  savings: number;
+  income: number;
+  expense: number;
 }
 
 /**
- * Ahorro de los últimos `count` meses terminando en `endMonth` (incluido),
- * del más viejo al más nuevo. Los meses sin movimientos dan 0.
+ * Ingresos y gastos de los últimos `count` meses terminando en `endMonth`
+ * (incluido), del más viejo al más nuevo. Los meses sin movimientos dan 0.
  */
-export function savingsByMonth(
+export function incomeExpenseByMonth(
   movements: Movement[],
   endMonth: Date,
   count: number,
   rateForDate: RateResolver,
-): MonthlySavings[] {
-  const result: MonthlySavings[] = [];
+): MonthlyIncomeExpense[] {
+  const result: MonthlyIncomeExpense[] = [];
   for (let offset = count - 1; offset >= 0; offset--) {
     const date = new Date(endMonth.getFullYear(), endMonth.getMonth() - offset, 1);
     const key = monthKeyOf(date);
-    result.push({ key, date, savings: monthStats(movements, key, rateForDate).savings });
+    const { income, expense } = monthStats(movements, key, rateForDate);
+    result.push({ key, date, income, expense });
   }
   return result;
 }
