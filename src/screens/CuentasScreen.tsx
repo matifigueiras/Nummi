@@ -229,7 +229,7 @@ export function CuentasScreen() {
       {trendCategories.length > 0 && (
         <Card>
           <Text style={styles.widgetTitle}>Categorías en el tiempo</Text>
-          <CategoryTrend data={categoryTrend} categories={trendCategories} />
+          <CategoryTrend data={categoryTrend} categories={trendCategories} currency={currency} />
         </Card>
       )}
 
