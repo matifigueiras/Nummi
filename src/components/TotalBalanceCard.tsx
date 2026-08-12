@@ -122,7 +122,6 @@ const makeStyles = (c: ThemeColors) =>
     card: {
       borderRadius: radius.lg,
       padding: spacing.lg,
-      marginBottom: spacing.lg,
     },
     header: {
       flexDirection: 'row',
