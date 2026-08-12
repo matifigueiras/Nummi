@@ -102,14 +102,7 @@ export function Screen({ children, onRefresh }: Props) {
         </View>
       )}
       <ScrollView
-        style={[
-          styles.scroll,
-          // Sólo se aplica el transform mientras hace falta: dejarlo puesto
-          // en translateY(0) de forma permanente le crea a Safari una capa
-          // de composición aparte, que deja una costura/línea visible en el
-          // borde de abajo del ScrollView incluso en reposo.
-          showIndicator && { transform: [{ translateY: refreshing ? PULL_THRESHOLD * 0.6 : pull }] },
-        ]}
+        style={styles.scroll}
         contentContainerStyle={[
           styles.content,
           { paddingTop: insets.top + spacing.xl, paddingBottom: 120 },
@@ -121,6 +114,13 @@ export function Screen({ children, onRefresh }: Props) {
         onTouchMove={onRefresh ? handleTouchMove : undefined}
         onTouchEnd={onRefresh ? handleTouchEnd : undefined}
       >
+        {/* Empuja el contenido con un espaciador normal en vez de un
+            transform: en Safari, animar transform en el propio ScrollView
+            le pisa el translateZ(0) que react-native-web le pone siempre
+            (truco de composición para scroll suave), y deja una costura
+            visible en el borde de abajo aunque sólo se use durante el
+            gesto. Un View con height dinámico no toca la composición. */}
+        <View style={{ height: refreshing ? PULL_THRESHOLD * 0.6 : pull }} />
         {children}
       </ScrollView>
     </View>
