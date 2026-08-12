@@ -5,10 +5,15 @@ import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
 import { formatPercent } from '../utils/format';
 
-// Compara, en barras horizontales, el yield anual de cada propiedad contra
-// el retorno ponderado de la cartera de inversiones. Son dos cosas distintas
+// Compara, en un dot plot, el yield anual de cada propiedad contra el
+// retorno ponderado de la cartera de inversiones. Son dos cosas distintas
 // (renta vs. ganancia de capital), pero puestas juntas dan una idea rápida
-// de qué parte del patrimonio está rindiendo más.
+// de qué parte del patrimonio está rindiendo más. Todas las filas comparten
+// el mismo eje, centrado en cero, para que la posición del punto sea
+// comparable entre filas (no tendría sentido conectarlas con una línea:
+// no hay ninguna secuencia entre "Depto", "Cochera" e "Inversiones").
+
+const DOT_SIZE = 10;
 
 export interface YieldItem {
   label: string;
@@ -27,27 +32,28 @@ export function YieldComparison({ items }: Props) {
   return (
     <View style={s.list}>
       {items.map((item) => (
-        <YieldBar key={item.label} item={item} maxAbs={maxAbs} />
+        <YieldDot key={item.label} item={item} maxAbs={maxAbs} />
       ))}
     </View>
   );
 }
 
-function YieldBar({ item, maxAbs }: { item: YieldItem; maxAbs: number }) {
+function YieldDot({ item, maxAbs }: { item: YieldItem; maxAbs: number }) {
   const { colors } = useTheme();
   const s = useThemedStyles(makeStyles);
   const gain = item.pct >= 0;
-  const targetPct = (Math.abs(item.pct) / maxAbs) * 100;
-  const width = useRef(new Animated.Value(0)).current;
+  // Eje compartido de -maxAbs a +maxAbs, cero en el centro (50%)
+  const targetLeft = ((item.pct + maxAbs) / (2 * maxAbs)) * 100;
+  const left = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    Animated.timing(width, {
-      toValue: targetPct,
+    Animated.timing(left, {
+      toValue: targetLeft,
       duration: 700,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [targetPct, width]);
+  }, [targetLeft, left]);
 
   return (
     <View style={s.item}>
@@ -65,11 +71,12 @@ function YieldBar({ item, maxAbs }: { item: YieldItem; maxAbs: number }) {
         </View>
       </View>
       <View style={s.track}>
+        <View style={s.zeroTick} />
         <Animated.View
           style={[
-            s.fill,
+            s.dot,
             {
-              width: width.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+              left: left.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
               backgroundColor: gain ? colors.income : colors.expense,
             },
           ]}
@@ -82,10 +89,10 @@ function YieldBar({ item, maxAbs }: { item: YieldItem; maxAbs: number }) {
 const makeStyles = (c: ThemeColors) =>
   StyleSheet.create({
     list: {
-      gap: spacing.md,
+      gap: spacing.lg,
     },
     item: {
-      gap: 5,
+      gap: spacing.sm,
     },
     header: {
       flexDirection: 'row',
@@ -108,13 +115,22 @@ const makeStyles = (c: ThemeColors) =>
       fontVariant: ['tabular-nums'],
     },
     track: {
-      height: 6,
-      borderRadius: radius.full,
-      backgroundColor: c.inkSoft,
-      overflow: 'hidden',
+      height: DOT_SIZE,
+      justifyContent: 'center',
     },
-    fill: {
-      height: '100%',
+    zeroTick: {
+      position: 'absolute',
+      left: '50%',
+      top: 0,
+      bottom: 0,
+      width: 1,
+      backgroundColor: c.border,
+    },
+    dot: {
+      position: 'absolute',
+      width: DOT_SIZE,
+      height: DOT_SIZE,
       borderRadius: radius.full,
+      marginLeft: -DOT_SIZE / 2,
     },
   });
