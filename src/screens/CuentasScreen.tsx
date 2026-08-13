@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { AccountBalanceTrend } from '../components/AccountBalanceTrend';
 import { AccountModal } from '../components/AccountModal';
 import { AccountPicker } from '../components/AccountPicker';
 import { Card } from '../components/Card';
@@ -18,6 +19,7 @@ import { font, radius, spacing, ThemeColors } from '../theme';
 import { Currency, Movement } from '../types';
 import {
   accountBalanceAt,
+  accountBalanceByMonth,
   categoryAmountsByMonth,
   constantRate,
   expensesByCategory,
@@ -123,6 +125,11 @@ export function CuentasScreen() {
     [accountMovements, month, trendCategories],
   );
 
+  const balanceTrend = useMemo(
+    () => (account ? accountBalanceByMonth(account, movements, month, TREND_MONTHS) : []),
+    [account, movements, month],
+  );
+
   const sameCurrencyCount = accounts.filter((a) => a.currency === currency).length;
   const currencyTotal = useMemo(
     () => totalByCurrency(accounts, movements, currency),
@@ -181,6 +188,12 @@ export function CuentasScreen() {
           </Text>
         )}
       </Card>
+
+      {account && (
+        <Card>
+          <AccountBalanceTrend data={balanceTrend} currency={currency} />
+        </Card>
+      )}
 
       <Card>
         <Text style={styles.widgetTitle}>Resumen del mes</Text>
