@@ -12,16 +12,17 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { spacing, ThemeColors } from '../theme';
+import { useResponsiveLayout } from '../utils/responsive';
 
-// Wrapper común de pantalla: fondo, scroll, safe area y ancho máximo tipo
-// teléfono para que en el navegador de escritorio no se estire de más.
+// Wrapper común de pantalla: fondo, scroll, safe area y ancho máximo que se
+// ensancha en pantallas grandes (ver utils/responsive) para no desperdiciar
+// tanto espacio en desktop, sin cambiar la navegación de mobile.
 //
 // Pull-to-refresh a mano: como PWA standalone en iOS no hay barra de Safari
 // que recargue la página al tirar hacia abajo, y react-native-web no
 // implementa el gesto real de <RefreshControl> (sólo renderiza un View
 // vacío) — así que se arma el gesto con touch events + un indicador propio.
 
-const MAX_WIDTH = 520;
 const PULL_THRESHOLD = 64;
 const PULL_MAX = 90;
 const PULL_RESISTANCE = 0.5;
@@ -35,6 +36,7 @@ export function Screen({ children, onRefresh }: Props) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { maxWidth } = useResponsiveLayout();
 
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,7 +107,7 @@ export function Screen({ children, onRefresh }: Props) {
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + spacing.xl, paddingBottom: 120 },
+          { maxWidth, paddingTop: insets.top + spacing.xl, paddingBottom: 120 },
         ]}
         showsVerticalScrollIndicator={false}
         onScroll={onRefresh ? handleScroll : undefined}
@@ -145,7 +147,6 @@ const makeStyles = (c: ThemeColors) =>
     },
     content: {
       width: '100%',
-      maxWidth: MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: spacing.xl,
       gap: spacing.lg,

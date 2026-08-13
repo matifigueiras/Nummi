@@ -16,6 +16,7 @@ import { useApp } from '../store/AppContext';
 import { usePrivacy } from '../store/PrivacyContext';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, spacing, ThemeColors } from '../theme';
+import { useResponsiveLayout } from '../utils/responsive';
 import {
   budgetProgress,
   expensesByCategory,
@@ -53,6 +54,8 @@ export function HomeScreen() {
   const { hidden } = usePrivacy();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { statColumns } = useResponsiveLayout();
+  const tileWidth = statColumns === 4 ? '23%' : statColumns === 3 ? '31%' : '48%';
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
   const [showGoalModal, setShowGoalModal] = useState(false);
 
@@ -170,6 +173,7 @@ export function HomeScreen() {
           iconBg={colors.incomeSoft}
           label="Ingresos"
           value={hidden ? HIDDEN_AMOUNT : formatMoney(income, 'ARS')}
+          style={{ flexBasis: tileWidth }}
         >
           {!hidden && incomeDelta !== null && <PercentageDelta value={incomeDelta} />}
         </StatTile>
@@ -179,6 +183,7 @@ export function HomeScreen() {
           iconBg={colors.expenseSoft}
           label="Gastos"
           value={hidden ? HIDDEN_AMOUNT : formatMoney(expense, 'ARS')}
+          style={{ flexBasis: tileWidth }}
         >
           {!hidden && expenseDelta !== null && <PercentageDelta value={expenseDelta} invertColors />}
         </StatTile>
@@ -188,6 +193,7 @@ export function HomeScreen() {
           iconBg={savings >= 0 ? colors.incomeSoft : colors.expenseSoft}
           label="Ahorro del mes"
           value={hidden ? HIDDEN_AMOUNT : formatMoney(savings, 'ARS')}
+          style={{ flexBasis: tileWidth }}
         />
         <StatTile
           icon="target"
@@ -197,6 +203,7 @@ export function HomeScreen() {
           value={hidden ? HIDDEN_AMOUNT : formatMoneyCompact(savingsGoal.amount, savingsGoal.currency)}
           sub={`${Math.round(goalPct)}% alcanzado`}
           onPress={() => setShowGoalModal(true)}
+          style={{ flexBasis: tileWidth }}
         >
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${goalBarProgress * 100}%` }]} />
