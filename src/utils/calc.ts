@@ -111,6 +111,36 @@ export function accountBalanceAt(
   return accountBalance(account, upToMonth);
 }
 
+export interface MonthlyAccountBalance {
+  /** "yyyy-mm" */
+  key: string;
+  /** Primer día del mes, para formatear */
+  date: Date;
+  balance: number;
+}
+
+/**
+ * Saldo de una cuenta al cierre de cada uno de los últimos `count` meses
+ * terminando en `endMonth` (incluido). A diferencia del patrimonio o las
+ * posiciones, esto es histórico real (no decorativo): el saldo de una
+ * cuenta se reconstruye exacto para cualquier mes pasado a partir de los
+ * movimientos, sin necesitar ningún dato externo guardado con el tiempo.
+ */
+export function accountBalanceByMonth(
+  account: Account,
+  movements: Movement[],
+  endMonth: Date,
+  count: number,
+): MonthlyAccountBalance[] {
+  const result: MonthlyAccountBalance[] = [];
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const date = new Date(endMonth.getFullYear(), endMonth.getMonth() - offset, 1);
+    const key = monthKeyOf(date);
+    result.push({ key, date, balance: accountBalanceAt(account, movements, key) });
+  }
+  return result;
+}
+
 export interface CategoryTotal {
   category: string;
   amount: number;

@@ -2,6 +2,7 @@ import { Account, Movement, Position, Property } from '../../types';
 import {
   accountBalance,
   accountBalanceAt,
+  accountBalanceByMonth,
   budgetProgress,
   categoryAmountsByMonth,
   constantRate,
@@ -209,6 +210,34 @@ describe('accountBalanceAt', () => {
     expect(accountBalanceAt(account, movements, '2026-12')).toBe(
       accountBalance(account, movements),
     );
+  });
+});
+
+describe('accountBalanceByMonth', () => {
+  const account: Account = {
+    id: 'caja-ars',
+    name: 'Caja ARS',
+    currency: 'ARS',
+    initialBalance: 1000,
+  };
+  const movements = [
+    movement({ id: '1', type: 'ingreso', amount: 500, date: '2026-06-10' }),
+    movement({ id: '2', type: 'ingreso', amount: 300, date: '2026-07-10' }),
+    movement({ id: '3', type: 'gasto', amount: 200, date: '2026-08-10' }),
+  ];
+
+  it('reconstruye el saldo de cierre de cada mes, del más viejo al más nuevo', () => {
+    const result = accountBalanceByMonth(account, movements, new Date(2026, 7, 1), 3);
+    expect(result).toEqual([
+      { key: '2026-06', date: new Date(2026, 5, 1), balance: 1500 },
+      { key: '2026-07', date: new Date(2026, 6, 1), balance: 1800 },
+      { key: '2026-08', date: new Date(2026, 7, 1), balance: 1600 },
+    ]);
+  });
+
+  it('da el saldo inicial en los meses sin movimientos todavía', () => {
+    const result = accountBalanceByMonth(account, [], new Date(2026, 1, 1), 2);
+    expect(result.map((r) => r.balance)).toEqual([1000, 1000]);
   });
 });
 
