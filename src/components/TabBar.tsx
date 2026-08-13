@@ -88,14 +88,14 @@ const makeStyles = (c: ThemeColors) =>
       alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
-      paddingTop: spacing.sm,
+      paddingTop: spacing.xs,
       paddingHorizontal: spacing.sm,
     },
     tab: {
       flex: 1,
       alignItems: 'center',
       gap: 3,
-      paddingVertical: spacing.sm,
+      paddingTop: spacing.sm,
     },
     tabLabel: {
       fontSize: font.caption,
