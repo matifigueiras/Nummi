@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,8 +44,17 @@ export function TabBar({ state, navigation, onFabPress }: Props) {
     );
   };
 
+  // En iOS standalone (agregado a la pantalla de inicio), useSafeAreaInsets
+  // no siempre detecta bien el alto real del home indicator en web — usar
+  // env(safe-area-inset-bottom) de CSS directo es más confiable ahí. En
+  // nativo insets.bottom funciona bien, así que se deja como estaba.
+  const bottomPadding =
+    Platform.OS === 'web'
+      ? (`max(${spacing.sm}px, env(safe-area-inset-bottom))` as unknown as number)
+      : Math.max(insets.bottom, spacing.sm);
+
   return (
-    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <View style={[styles.bar, { paddingBottom: bottomPadding }]}>
       <View style={styles.inner}>
         {renderTab('Home', 0)}
         {renderTab('Cuentas', 1)}
