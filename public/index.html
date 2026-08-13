@@ -28,6 +28,23 @@
         height: 100%;
         flex: 1;
       }
+      /* Fondo del documento (no de la app en sí, eso lo pinta React): sin
+         esto, en iOS standalone la franja del home indicator (abajo de
+         todo, debajo de la tab bar) queda blanca por default del navegador
+         en vez de combinar con el tema — pasa antes de que React monte y en
+         cualquier resquicio de layout que la tab bar no llegue a cubrir. */
+      html,
+      body,
+      #root {
+        background-color: #f4f5f7;
+      }
+      @media (prefers-color-scheme: dark) {
+        html,
+        body,
+        #root {
+          background-color: #0d0f14;
+        }
+      }
     </style>
   </head>
 
