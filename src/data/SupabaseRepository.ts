@@ -442,5 +442,13 @@ export class SupabaseRepository implements DataRepository {
       const { error } = await supabase.from(table).delete().eq('user_id', userId);
       if (error) throw error;
     }
+    // El saldo de una cuenta es initial_balance + movimientos: borrar los
+    // movimientos y dejar el initial_balance viejo (ej: el de la cuenta
+    // demo) hacía que el saldo "reseteado" no diera cero.
+    const { error: accountsError } = await supabase
+      .from('accounts')
+      .update({ initial_balance: 0 })
+      .eq('user_id', userId);
+    if (accountsError) throw accountsError;
   }
 }
