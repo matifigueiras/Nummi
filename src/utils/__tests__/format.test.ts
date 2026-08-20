@@ -138,54 +138,85 @@ describe('formatThousandsLive', () => {
   });
 });
 
+/** Simula tipear `raw` carácter por carácter en un input formateado, tal
+ * como hace FormInput: en cada paso el input muestra formatThousandsLive del
+ * crudo anterior, el usuario agrega un carácter al final, y stripThousands
+ * recalcula el nuevo crudo a partir de esa diferencia. */
+function typeSequentially(raw: string): string {
+  let current = '';
+  for (const ch of raw) {
+    const displayed = formatThousandsLive(current);
+    current = stripThousands(displayed + ch, current);
+  }
+  return current;
+}
+
 describe('stripThousands', () => {
-  it('saca los puntos de miles', () => {
-    expect(stripThousands('1.000')).toBe('1000');
-    expect(stripThousands('2.900.000')).toBe('2900000');
+  it('saca los puntos de miles al pegar un número ya formateado', () => {
+    expect(stripThousands('1.000', '')).toBe('1000');
+    expect(stripThousands('2.900.000', '')).toBe('2900000');
   });
 
-  it('conserva la coma decimal', () => {
-    expect(stripThousands('1.234,56')).toBe('1234,56');
+  it('conserva la coma decimal al pegar un número formateado', () => {
+    expect(stripThousands('1.234,56', '')).toBe('1234,56');
   });
 
-  it('descarta letras y otros caracteres', () => {
-    expect(stripThousands('$1.000abc')).toBe('1000');
-  });
-
-  it('con separadores repetidos, el último manda (los anteriores son de miles)', () => {
-    expect(stripThousands('12,34,56')).toBe('1234,56');
+  it('descarta letras y otros caracteres al pegar', () => {
+    expect(stripThousands('$1.000abc', '')).toBe('1000');
   });
 
   it('da vacío para el string vacío', () => {
-    expect(stripThousands('')).toBe('');
+    expect(stripThousands('', '')).toBe('');
   });
 
-  it('acepta el punto como decimal (tecla de decimales del teclado numérico)', () => {
-    expect(stripThousands('146217.47')).toBe('146217,47');
+  it('borrar el separador de miles no borra ningún dígito', () => {
+    // "1.700" con backspace justo sobre el punto → el navegador manda "1700"
+    expect(stripThousands('1700', '1700')).toBe('1700');
   });
 
-  it('con miles Y decimal mezclando puntos, el separador de miles se descarta', () => {
-    expect(stripThousands('146.217.47')).toBe('146217,47');
+  it('reemplazar todo el texto seleccionado toma el valor nuevo', () => {
+    expect(stripThousands('5000', '17000')).toBe('5000');
   });
 
-  it('no confunde un grupo de miles final con un decimal', () => {
-    expect(stripThousands('146.217')).toBe('146217');
-    expect(stripThousands('2.900.000')).toBe('2900000');
+  it('no rompe al tipear en el medio de un número ya agrupado', () => {
+    // cursor después del "17", insertando un "9": "17.000" → "179.000"
+    expect(stripThousands('179.000', '17000')).toBe('179000');
   });
 
-  it('deja el decimal "en progreso" sin dígitos todavía', () => {
-    expect(stripThousands('146217.')).toBe('146217,');
-    expect(stripThousands('146217,')).toBe('146217,');
-  });
-});
+  describe('tipeando dígito por dígito (el bug real: PC, sin decimales)', () => {
+    it('no confunde el punto de miles recién agregado con una coma decimal', () => {
+      // Antes: al pasar de 4 a 5 dígitos, "1.700" + "0" se leía como
+      // "1,7000" (coma decimal) en vez de "17000".
+      expect(typeSequentially('17000')).toBe('17000');
+    });
 
-describe('formatThousandsLive y stripThousands son inversas', () => {
-  it.each(['0', '100', '1000', '2900000', '1234,56', '650000'])(
-    'stripThousands(formatThousandsLive(%s)) vuelve al valor original',
-    (raw) => {
-      expect(stripThousands(formatThousandsLive(raw))).toBe(raw);
-    },
-  );
+    it('sigue funcionando para números más largos', () => {
+      expect(typeSequentially('2900000')).toBe('2900000');
+      expect(typeSequentially('146217')).toBe('146217');
+    });
+  });
+
+  describe('tipeando decimales con coma', () => {
+    it('agrega la coma y los decimales después de un monto con miles', () => {
+      expect(typeSequentially('17000,50')).toBe('17000,50');
+    });
+
+    it('deja el decimal "en progreso" sin dígitos todavía', () => {
+      expect(stripThousands('146217,', '146217')).toBe('146217,');
+    });
+  });
+
+  describe('tecla de decimales del teclado numérico (mobile, inserta punto)', () => {
+    it('un solo punto se interpreta como coma decimal', () => {
+      // el input mostraba "146.217" (con el punto de miles); el usuario
+      // agrega la tecla de decimales, que en mobile también manda un punto
+      expect(stripThousands('146.217.', '146217')).toBe('146217,');
+    });
+
+    it('sigue agregando decimales normalmente después', () => {
+      expect(typeSequentially('146217,47')).toBe('146217,47');
+    });
+  });
 });
 
 describe('formatPercent', () => {

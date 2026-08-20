@@ -37,7 +37,7 @@ export function FormInput({ big, thousands, style, value, onChangeText, ...rest 
   const styles = useThemedStyles(makeStyles);
   const displayValue = thousands && typeof value === 'string' ? formatThousandsLive(value) : value;
   const handleChangeText = thousands
-    ? (text: string) => onChangeText?.(stripThousands(text))
+    ? (text: string) => onChangeText?.(stripThousands(text, typeof value === 'string' ? value : ''))
     : onChangeText;
   return (
     <TextInput
