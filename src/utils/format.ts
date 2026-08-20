@@ -93,19 +93,28 @@ export function formatThousandsLive(raw: string): string {
  * Inversa de `formatThousandsLive`: a partir de lo que el usuario ve/edita
  * en el input formateado, recupera el valor "crudo" que espera `parseAmount`
  * (sólo dígitos y, como mucho, una coma decimal).
+ *
+ * Acepta "," o "." como separador decimal: el teclado numérico de mobile
+ * inserta un punto al tocar la tecla de decimales (según el idioma/región
+ * del dispositivo), aunque la app siempre muestre coma — sin esto, esa tecla
+ * rompía el número en vez de agregar los decimales.
+ *
+ * El separador de miles nunca lo tipea el usuario (formatThousandsLive lo
+ * agrega solo mientras escribe), así que el ÚLTIMO separador de la cadena es
+ * el punto decimal — salvo que tenga exactamente 3 dígitos después, que es
+ * la firma de un grupo de miles agregado automáticamente.
  */
 export function stripThousands(text: string): string {
-  const withoutDots = text.replace(/\./g, '');
-  let result = '';
-  let sawComma = false;
-  for (const ch of withoutDots) {
-    if (ch >= '0' && ch <= '9') result += ch;
-    else if (ch === ',' && !sawComma) {
-      result += ch;
-      sawComma = true;
-    }
+  let lastSepIndex = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '.' || text[i] === ',') lastSepIndex = i;
   }
-  return result;
+  if (lastSepIndex === -1) return text.replace(/\D/g, '');
+
+  const before = text.slice(0, lastSepIndex).replace(/\D/g, '');
+  const after = text.slice(lastSepIndex + 1).replace(/\D/g, '');
+  if (after.length === 3) return before + after;
+  return before + ',' + after;
 }
 
 /** Convierte un monto a USD usando el blue (venta) como referencia */

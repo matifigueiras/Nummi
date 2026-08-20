@@ -152,12 +152,30 @@ describe('stripThousands', () => {
     expect(stripThousands('$1.000abc')).toBe('1000');
   });
 
-  it('conserva sólo la primera coma', () => {
-    expect(stripThousands('12,34,56')).toBe('12,3456');
+  it('con separadores repetidos, el último manda (los anteriores son de miles)', () => {
+    expect(stripThousands('12,34,56')).toBe('1234,56');
   });
 
   it('da vacío para el string vacío', () => {
     expect(stripThousands('')).toBe('');
+  });
+
+  it('acepta el punto como decimal (tecla de decimales del teclado numérico)', () => {
+    expect(stripThousands('146217.47')).toBe('146217,47');
+  });
+
+  it('con miles Y decimal mezclando puntos, el separador de miles se descarta', () => {
+    expect(stripThousands('146.217.47')).toBe('146217,47');
+  });
+
+  it('no confunde un grupo de miles final con un decimal', () => {
+    expect(stripThousands('146.217')).toBe('146217');
+    expect(stripThousands('2.900.000')).toBe('2900000');
+  });
+
+  it('deja el decimal "en progreso" sin dígitos todavía', () => {
+    expect(stripThousands('146217.')).toBe('146217,');
+    expect(stripThousands('146217,')).toBe('146217,');
   });
 });
 
