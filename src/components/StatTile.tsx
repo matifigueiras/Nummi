@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, shadow, spacing, ThemeColors } from '../theme';
@@ -13,13 +13,15 @@ interface Props {
   sub?: string;
   onPress?: () => void;
   children?: React.ReactNode;
+  /** Para pisar el ancho por defecto (ej: más columnas en pantallas anchas) */
+  style?: StyleProp<ViewStyle>;
 }
 
-export function StatTile({ icon, iconColor, iconBg, label, value, sub, onPress, children }: Props) {
+export function StatTile({ icon, iconColor, iconBg, label, value, sub, onPress, children, style }: Props) {
   const styles = useThemedStyles(makeStyles);
   const { colors } = useTheme();
   return (
-    <Pressable style={styles.tile} onPress={onPress} disabled={!onPress}>
+    <Pressable style={[styles.tile, style]} onPress={onPress} disabled={!onPress}>
       <View style={styles.tileHeader}>
         <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
           <Feather name={icon} size={15} color={iconColor} />

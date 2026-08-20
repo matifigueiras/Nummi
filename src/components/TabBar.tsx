@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, useThemedStyles } from '../store/ThemeContext';
 import { font, radius, shadow, spacing, ThemeColors } from '../theme';
+import { useResponsiveLayout } from '../utils/responsive';
 
 // Tab bar propia: Home · Cuentas · (●) FAB · Patrimonio · Más
 // El FAB no es una ruta — dispara el modal de nuevo movimiento.
@@ -24,6 +25,7 @@ export function TabBar({ state, navigation, onFabPress }: Props) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const { maxWidth } = useResponsiveLayout();
 
   const renderTab = (routeName: string, index: number) => {
     const focused = state.index === index;
@@ -55,7 +57,7 @@ export function TabBar({ state, navigation, onFabPress }: Props) {
 
   return (
     <View style={[styles.bar, { paddingBottom: bottomPadding }]}>
-      <View style={styles.inner}>
+      <View style={[styles.inner, { maxWidth }]}>
         {renderTab('Home', 0)}
         {renderTab('Cuentas', 1)}
         <View style={styles.tab}>
@@ -84,7 +86,6 @@ const makeStyles = (c: ThemeColors) =>
     },
     inner: {
       width: '100%',
-      maxWidth: 520,
       alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
