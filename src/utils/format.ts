@@ -90,31 +90,84 @@ export function formatThousandsLive(raw: string): string {
 }
 
 /**
- * Inversa de `formatThousandsLive`: a partir de lo que el usuario ve/edita
- * en el input formateado, recupera el valor "crudo" que espera `parseAmount`
- * (sólo dígitos y, como mucho, una coma decimal).
- *
- * Acepta "," o "." como separador decimal: el teclado numérico de mobile
- * inserta un punto al tocar la tecla de decimales (según el idioma/región
- * del dispositivo), aunque la app siempre muestre coma — sin esto, esa tecla
- * rompía el número en vez de agregar los decimales.
- *
- * El separador de miles nunca lo tipea el usuario (formatThousandsLive lo
- * agrega solo mientras escribe), así que el ÚLTIMO separador de la cadena es
- * el punto decimal — salvo que tenga exactamente 3 dígitos después, que es
- * la firma de un grupo de miles agregado automáticamente.
+ * Limpia lo que se insertó/borró en un edit (nunca el texto completo): sólo
+ * dígitos y, como mucho, una coma decimal sobreviven. El punto se acepta
+ * como alias de coma (teclado numérico de mobile) cuando se tipea un único
+ * carácter; en un pegado más largo, en cambio, el punto se asume separador
+ * de miles del texto pegado y se descarta.
  */
-export function stripThousands(text: string): string {
-  let lastSepIndex = -1;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === '.' || text[i] === ',') lastSepIndex = i;
-  }
-  if (lastSepIndex === -1) return text.replace(/\D/g, '');
+function sanitizeInsertedRaw(inserted: string, alreadyHasComma: boolean): string {
+  if (inserted.length === 0) return '';
 
-  const before = text.slice(0, lastSepIndex).replace(/\D/g, '');
-  const after = text.slice(lastSepIndex + 1).replace(/\D/g, '');
-  if (after.length === 3) return before + after;
-  return before + ',' + after;
+  if (inserted.length === 1) {
+    const ch = inserted;
+    if (/\d/.test(ch)) return ch;
+    if ((ch === ',' || ch === '.') && !alreadyHasComma) return ',';
+    return '';
+  }
+
+  let result = '';
+  let usedComma = alreadyHasComma;
+  for (const ch of inserted) {
+    if (/\d/.test(ch)) {
+      result += ch;
+    } else if (ch === ',' && !usedComma) {
+      result += ',';
+      usedComma = true;
+    }
+    // un "." dentro de un texto pegado se asume separador de miles: se descarta
+  }
+  return result;
+}
+
+/**
+ * Inversa de `formatThousandsLive`, pensada para edición en vivo: a partir
+ * del valor crudo ANTERIOR (única fuente de verdad) y el texto que quedó en
+ * el input tras el último cambio, calcula el nuevo valor crudo.
+ *
+ * No intenta "adivinar" el significado de cada separador mirando sólo el
+ * texto final — eso rompía apenas el número cruzaba de 4 a 5+ dígitos
+ * mientras se tipeaba en PC (el punto de miles recién agregado se confundía
+ * con una coma decimal). En cambio, reconstruye el texto anterior a partir
+ * del crudo (`formatThousandsLive(previousRaw)`), encuentra el prefijo/sufijo
+ * en común con el texto nuevo, y sólo la diferencia en el medio —lo que
+ * realmente se tipeó o borró— se aplica sobre el crudo. Los puntos que la
+ * propia función agrega para mostrar nunca entran en la cuenta.
+ */
+export function stripThousands(text: string, previousRaw: string): string {
+  const oldText = formatThousandsLive(previousRaw);
+  if (text === oldText) return previousRaw;
+
+  const maxCommon = Math.min(oldText.length, text.length);
+  let prefixLen = 0;
+  while (prefixLen < maxCommon && oldText[prefixLen] === text[prefixLen]) prefixLen++;
+
+  const maxSuffix = maxCommon - prefixLen;
+  let suffixLen = 0;
+  while (
+    suffixLen < maxSuffix &&
+    oldText[oldText.length - 1 - suffixLen] === text[text.length - 1 - suffixLen]
+  ) {
+    suffixLen++;
+  }
+
+  const inserted = text.slice(prefixLen, text.length - suffixLen);
+
+  // Posición en el crudo equivalente a una posición en el texto formateado:
+  // cuenta cuántos caracteres "reales" (no puntos de miles) la preceden.
+  const rawIndexAt = (formattedIndex: number) =>
+    oldText.slice(0, formattedIndex).replace(/\./g, '').length;
+
+  const prefixLenInRaw = rawIndexAt(prefixLen);
+  const suffixLenInRaw = previousRaw.length - rawIndexAt(oldText.length - suffixLen);
+
+  const insertedRaw = sanitizeInsertedRaw(inserted, previousRaw.includes(','));
+
+  return (
+    previousRaw.slice(0, prefixLenInRaw) +
+    insertedRaw +
+    previousRaw.slice(previousRaw.length - suffixLenInRaw)
+  );
 }
 
 /** Convierte un monto a USD usando el blue (venta) como referencia */
