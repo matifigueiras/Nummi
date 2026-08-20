@@ -12,7 +12,8 @@ export interface ResponsiveLayout {
 
 export function useResponsiveLayout(): ResponsiveLayout {
   const { width } = useWindowDimensions();
-  if (width >= 1000) return { maxWidth: 900, statColumns: 4 };
+  if (width >= 1400) return { maxWidth: 1200, statColumns: 4 };
+  if (width >= 1000) return { maxWidth: 960, statColumns: 4 };
   if (width >= 700) return { maxWidth: 680, statColumns: 3 };
   return { maxWidth: 520, statColumns: 2 };
 }
